@@ -1,0 +1,72 @@
+###############################################################################
+#
+# LocTag V3.1.2 pin constraint file (.pcf)
+#
+# Copyright (c) 2020, Shengen Wei
+# All rights reserved.
+#
+###############################################################################
+# Two commands are supported:
+#   set_io [-nowarn] [-pullup yes|no] [-pullup_resistor 3P3K|6P8K|10K|100K] port pin
+#   set_frequency net frequency
+###############################################################################
+
+# PMOD / General purpose pins
+set_io -nowarn  pin_mio_1      38   # IOT_50B
+set_io -nowarn  pin_mio_2      36   # IOT_48B
+set_io -nowarn  pin_mio_3      34   # IOT_44B
+set_io -nowarn  pin_mio_4      31   # IOT_42B
+set_io -nowarn  pin_mio_7      37   # IOT_45A_G1
+set_io -nowarn  pin_mio_8      35   # IOT_46B_G0
+set_io -nowarn  pin_mio_9      32   # IOT_43A
+set_io -nowarn  pin_mio_10     28   # IOT_41A
+
+# USB
+set_io -nowarn  pin_usb_n      26   # IOT_39A
+set_io -nowarn  pin_usb_p      27   # IOT_38B
+set_io -nowarn  pin_usb_pu     25   # IOT_36B
+
+# Reflector
+set_io -nowarn  pin_ctrl_1     42   # IOT_51A
+
+# Detector
+set_io -nowarn  pin_lt5534_en  2    # IOB_6A
+set_io -nowarn  pin_trig       48   # IOB_4A
+set_io -nowarn  pin_adc_cs     45   # IOB_5B
+set_io -nowarn  pin_adc_so     46   # IOB_0A
+set_io -nowarn  pin_adc_clk    47   # IOB_2A
+
+# Flash
+set_io -nowarn  pin_flash_cs   16   # IOB_35B_SPI_SS
+set_io -nowarn  pin_flash_clk  15   # IOB_34A_SPI_SCK
+set_io -nowarn  pin_flash_so   17   # IOB_33B_SPI_SI
+set_io -nowarn  pin_flash_si   14   # IOB_32A_SPI_SO
+set_io -nowarn  pin_flash_wp   13   # IOB_24A
+
+# User input
+set_io -nowarn -pullup yes -pullup_resistor 10K  pin_key_1     9    # IOB_16A
+set_io -nowarn -pullup yes -pullup_resistor 10K  pin_key_2     10   # IOB_18A
+set_io -nowarn -pullup yes -pullup_resistor 10K  pin_key_3     11   # IOB_20A
+set_io -nowarn -pullup yes -pullup_resistor 10K  pin_key_4     12   # IOB_22A
+
+# Output
+set_io -nowarn  pin_led        6    # IOB_13B
+
+# 16MHz CLK
+set_io -nowarn  pin_clk        20   # IOB_25B_G3
+
+# unused pins
+# set_io -nowarn  pin_nc_0       23   # IOT_37A
+# set_io -nowarn  pin_nc_1       43   # IOT_49A
+# set_io -nowarn  pin_nc_2       21   # IOB_23B
+# set_io -nowarn  pin_nc_3       19   # IOB_29B
+# set_io -nowarn  pin_nc_4       18   # IOB_31B
+# set_io -nowarn  pin_nc_5       4    # IOB_8A
+# set_io -nowarn  pin_nc_6       3    # IOB_9B
+# set_io -nowarn  pin_nc_7       44   # IOB_3B_G6
+
+# clock constraint
+# set_frequency   pin_clk     16
+# set_frequency   clk         50
+
+## END OF FILE ##
