@@ -1,7 +1,7 @@
-`timescale 1ns/1ps
+`timescale 1ns/1ns
 module loctag_tb;
   reg clk;
-  reg reset,
+  reg reset;
   reg trig;
   reg force_fs;
   reg [1:0] mode;
@@ -12,11 +12,11 @@ module loctag_tb;
     reset <= 1;
     trig <= 0;
     force_fs <= 0;
-    mode <= 2'b00;
+    mode <= 2'b10;
     #100
     reset <= 0;
     #9900
-    pin_trig <= 1;
+    trig <= 1;
   end
 
   always #10 clk <= ~clk;
@@ -27,7 +27,7 @@ module loctag_tb;
     reset,
     lt5534_en,
     adc_cs,
-    dc_clk,
+    adc_clk,
     adc_so,
     trig,
 
@@ -35,7 +35,7 @@ module loctag_tb;
 
     force_fs,
     mode,
-    led,
+    led
   );
 
   

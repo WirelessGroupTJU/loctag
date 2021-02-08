@@ -1,10 +1,11 @@
+`timescale 1ns/1ns
 module pll (
   // 16MHz clock input
   input  clk_in,
   // 50MHz clock output
   output clk_out,
   // high-level valid
-  output reset,
+  output reset
   );
 
   /////////////////////////////////////////

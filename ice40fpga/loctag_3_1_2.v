@@ -1,4 +1,4 @@
-`timescale 1ns/1ps
+`timescale 1ns/1ns
 module loctag_3_1_2 (
   // 16MHz clock input
   input  pin_clk,
@@ -15,7 +15,7 @@ module loctag_3_1_2 (
 
   input  pin_key_1,
   input  pin_key_2,
-  input  pin_key_3,
+  input  pin_key_3
   // input  pin_key_4,
 
   // output pin_mio_1,
@@ -56,7 +56,7 @@ module loctag_3_1_2 (
 
     .force_fs(force_fs),
     .mode(mode),
-    .led(pin_led),
+    .led(pin_led)
   );
 
 endmodule

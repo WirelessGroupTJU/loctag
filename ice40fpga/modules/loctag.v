@@ -1,11 +1,11 @@
-`timescale 1ns/1ps
+`timescale 1ns/1ns
 module loctag (
   // 50MHz clock input
   input  clk,
   input  reset,
   output lt5534_en,
   output adc_cs,
-  output dc_clk,
+  output adc_clk,
   input  adc_so,
   input  trig,
 
@@ -13,11 +13,11 @@ module loctag (
 
   input  force_fs,
   input  [1:0] mode,
-  output led,
+  output led
   );
 
   // 常量输出
-  assign t5534_en = 1'b0;
+  assign lt5534_en = 1'b0;
   
   // MAC协议参数
   localparam Q = 2;
@@ -54,7 +54,6 @@ module loctag (
   ///////////////// 变量与信号定义 ///////////////
   // 状态变量
   reg [4:0] state = IDLE;
-  reg [4:0] next_state = IDLE;
   // 由trig和定时驱动状态的转移 
   reg [5:0] divide_counter = 0;
   reg [26:0] us_counter = 0;
@@ -175,12 +174,6 @@ module loctag (
           end
         end
         
-        default: begin
-          state <= IDLE;
-          counter_rst <= 1;
-        end 
-
-
         default: begin
           state <= IDLE;
           counter_rst <= 1;
