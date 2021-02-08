@@ -14,19 +14,22 @@
 %% =====================================================================================
 %%
 
-function ret = read_log_file(filename)
+function ret = read_log_file(filename, optarg)
+arguments
+    filename {mustBeFile};
+    optarg.rssi_base {mustBeReal, mustBeScalarOrEmpty} = -95;
+end
+
 f = fopen(filename, 'rb');
 if (f < 0)
     error('couldn''t open file %s', filename);
-    return;
 end
 
 status = fseek(f, 0, 'eof');
 if status ~= 0
     [msg, errno] = ferror(f);
-    error('Error %d seeking: %s', errno, msg);
     fclose(f);
-    return;
+    error('Error %d seeking: %s', errno, msg);    
 end
 len = ftell(f);
 fprintf('file length is:%d\n',len);
@@ -34,21 +37,20 @@ fprintf('file length is:%d\n',len);
 status = fseek(f, 0, 'bof');
 if status ~= 0
     [msg, errno] = ferror(f);
-    error('Error %d seeking: %s', errno, msg);
     fclose(f);
-    return;
+    error('Error %d seeking: %s', errno, msg);
 end
 
 ret = cell(ceil(len / 420),1);
 cur = 0;
 count = 0;
 
-endian_format = 'ieee-le';
+endian_format = 'ieee-le'; % should be 'ieee-le' rather than 'ieee-be'
 
 while cur < (len - 4)
     field_len = fread(f, 1, 'uint16', 0, endian_format);
 	cur = cur + 2;
-    fprintf('Block length is:%d\n',field_len);
+    printf_i('Block length is:%d\n',field_len);
 
 	if (cur + field_len) > len
    		break;
@@ -57,73 +59,73 @@ while cur < (len - 4)
     timestamp = fread(f, 1, 'uint64', 0, [endian_format '.l64']);
 	csi_matrix.timestamp = timestamp;
 	cur = cur + 8;
-	fprintf('timestamp is %d\n',timestamp);
+	printf_i('timestamp is %d\n',timestamp);
 
     csi_len = fread(f, 1, 'uint16', 0, endian_format);
 	csi_matrix.csi_len = csi_len;
 	cur = cur + 2;
-    fprintf('csi_len is %d\n',csi_len);
+    printf_i('csi_len is %d\n',csi_len);
 
     tx_channel = fread(f, 1, 'uint16', 0, endian_format);
 	csi_matrix.channel = tx_channel;
 	cur = cur + 2;
-    fprintf('channel is %d\n',tx_channel);
+    printf_i('channel is %d\n',tx_channel);
    
     err_info = fread(f, 1,'uint8=>int');
     csi_matrix.err_info = err_info;
-    fprintf('err_info is %d\n',err_info);
+    printf_i('err_info is %d\n',err_info);
     cur = cur + 1;
     
     noise_floor = fread(f, 1, 'uint8=>int');
 	csi_matrix.noise_floor = noise_floor;
 	cur = cur + 1;
-    fprintf('noise_floor is %d\n',noise_floor);
+    printf_i('noise_floor is %d\n',noise_floor);
     
     Rate = fread(f, 1, 'uint8=>int');
 	csi_matrix.Rate = Rate;
 	cur = cur + 1;
-	fprintf('rate is %x\n',Rate);
+	printf_i('rate is %x\n',Rate);
     
     
     bandWidth = fread(f, 1, 'uint8=>int');
 	csi_matrix.bandWidth = bandWidth;
 	cur = cur + 1;
-	fprintf('bandWidth is %d\n',bandWidth);
+	printf_i('bandWidth is %d\n',bandWidth);
     
     num_tones = fread(f, 1, 'uint8=>int');
 	csi_matrix.num_tones = num_tones;
 	cur = cur + 1;
-	fprintf('num_tones is %d  ',num_tones);
+	printf_i('num_tones is %d  ',num_tones);
 
 	nr = fread(f, 1, 'uint8=>int');
 	csi_matrix.nr = nr;
 	cur = cur + 1;
-	fprintf('nr is %d  ',nr);
+	printf_i('nr is %d  ',nr);
 
 	nc = fread(f, 1, 'uint8=>int');
 	csi_matrix.nc = nc;
 	cur = cur + 1;
-	fprintf('nc is %d\n',nc);
+	printf_i('nc is %d\n',nc);
 	
-	rssi = fread(f, 1, 'uint8=>int');
+	rssi = fread(f, 1, 'uint8=>int') + optarg.rssi_base; % convert rssi to dbm, the same below
 	csi_matrix.rssi = rssi;
 	cur = cur + 1;
-	fprintf('rssi is %d\n',rssi);
+	printf_i('rssi is %d\n',rssi);
 
-	rssi1 = fread(f, 1, 'uint8=>int');
+	rssi1 = fread(f, 1, 'uint8=>int') + optarg.rssi_base;
 	csi_matrix.rssi1 = rssi1;
 	cur = cur + 1;
-	fprintf('rssi1 is %d\n',rssi1);
+	printf_i('rssi1 is %d\n',rssi1);
 
-	rssi2 = fread(f, 1, 'uint8=>int');
+	rssi2 = fread(f, 1, 'uint8=>int') + optarg.rssi_base;
 	csi_matrix.rssi2 = rssi2;
 	cur = cur + 1;
-	fprintf('rssi2 is %d\n',rssi2);
+	printf_i('rssi2 is %d\n',rssi2);
 
-	rssi3 = fread(f, 1, 'uint8=>int');
+	rssi3 = fread(f, 1, 'uint8=>int') + optarg.rssi_base;
 	csi_matrix.rssi3 = rssi3;
 	cur = cur + 1;
-	fprintf('rssi3 is %d\n',rssi3);
+	printf_i('rssi3 is %d\n',rssi3);
     
 %     not_sounding = fread(f, 1, 'uint8=>int');
 %     cur = cur + 1;
@@ -137,7 +139,7 @@ while cur < (len - 4)
     payload_len = fread(f, 1, 'uint16', 0, endian_format);
 	csi_matrix.payload_len = payload_len;
 	cur = cur + 2;
-    fprintf('payload length: %d\n',payload_len);	
+    printf_i('payload length: %d\n',payload_len);	
     
     if csi_len > 0
         csi_buf = fread(f, csi_len, 'uint8=>uint8');
@@ -170,4 +172,4 @@ else
 	ret = ret(1);
 end
 fclose(f);
-%end
+end
