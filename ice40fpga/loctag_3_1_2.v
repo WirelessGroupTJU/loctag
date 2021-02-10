@@ -41,7 +41,8 @@ module loctag_3_1_2 (
   );
 
   wire trig = ~pin_trig;
-
+  wire led;
+  
   loctag loctag_inst (
     // 50MHz clock input
     .clk(clk),
@@ -56,7 +57,9 @@ module loctag_3_1_2 (
 
     .force_fs(force_fs),
     .mode(mode),
-    .led(pin_led)
+    .led(led)
   );
+
+  assign pin_led = ~led;
 
 endmodule

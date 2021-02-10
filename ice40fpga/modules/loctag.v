@@ -13,7 +13,7 @@ module loctag (
 
   input  force_fs,
   input  [1:0] mode,
-  output reg led
+  output led
   );
 
   ///////////////// 端口设置 /////////////
@@ -232,10 +232,17 @@ module loctag (
   reg  b_crc_compute = 0;
   wire b_mod_out;
 
-  // 调制数据
-  localparam B_LEN = 8;
-  reg  [B_LEN-1:0] b_data = 8'h34;
-  wire b_s_dat = b_data[B_LEN-1];
+  // ROM Access
+  localparam ADDR_WIDTH = 6;
+  localparam ROM_SIZE = (2<<ADDR_WIDTH);
+  reg  [7:0] ep_rom[0:ROM_SIZE-1];
+
+  reg  [ADDR_WIDTH-1:0] rom_addr = 0;
+  reg  [0:2] bit_addr = 0;
+  wire [7:0] rom_data = ep_rom[rom_addr];
+  wire s_data = rom_data[bit_addr];
+
+  // 调制数据  
   wire [31:0] fcs_for_xor;
   reg  [31:0] b_fcs_data = 0;
 
@@ -247,7 +254,7 @@ module loctag (
     case (state)
       B_START : begin
         fs_en <= 1;
-        mod_invert <= 0;
+        data <= 0;
         b_mod_start <= 0;
         b_crc_compute <= 0;
         adc_soc <= 1;
@@ -256,7 +263,7 @@ module loctag (
 
       B_INFO_GOT : begin
         fs_en <= 1;
-        mod_invert <= 0;
+        data <= 0;
         b_mod_start <= 0;
         b_crc_compute <= 0;
         adc_soc <= 0;
@@ -273,10 +280,25 @@ module loctag (
         b_crc_compute <= 1;
         adc_soc <= 0;
         rss <= rss;
-        if (next_us)
-          b_data[B_LEN-1:0] <= {b_data[B_LEN-2:0], 1'b0};
+        if (next_us && p2s_counter == 7) begin
+          p2s_counter <= 0;
+          data <= rom_data;
+          rom_addr <= rom_addr+1;
+          
+          data[B_LEN-1:0] <= {data[B_LEN-2:0], 1'b0};
+          p2s_counter <= p2s_counter+1;
+        end else if (next_us) begin
+            p2s_counter <= 0;
+            data <= rom_data;
+            rom_addr <= rom_addr+1;
+          end else begin
+            p2s_counter <= 0;
+            data <= rom_data;
+            rom_addr <= rom_addr;
+          end
         else
-          b_data <= b_data;
+          data <= data;
+          p2s_counter <= p2s_counter;
       end
 
       B_CRC_START : begin
@@ -339,4 +361,58 @@ module loctag (
     .s_in(b_s_dat),
     .fcs_for_xor(fcs_for_xor),
   );
+
+  assign led  = trig;
+
+
+
+  initial begin
+    // tx_data ^ expected_data
+    ep_rom[6'd00] <= 8'h00;  // 00 ^ 00
+    ep_rom[6'd01] <= 8'h00;  // 00 ^ 00
+    // SSID Ext
+    ep_rom[6'd02] <= 8'h00;  // 00 ^ 00
+    // SSID len
+    ep_rom[6'd03] <= 8'h00;  // 10 ^ 10
+    // SSID 
+    ep_rom[6'd04] <= 8'h7c;  // 30 ^ 4c
+    ep_rom[6'd05] <= 8'h7f;  // 30 ^ 4f
+    ep_rom[6'd06] <= 8'h73;  // 30 ^ 43
+    ep_rom[6'd07] <= 8'h64;  // 30 ^ 54
+    ep_rom[6'd08] <= 8'h71;  // 30 ^ 41
+    ep_rom[6'd09] <= 8'h77;  // 30 ^ 47
+    ep_rom[6'd10] <= 8'h00;  // 2d ^ 2d
+    ep_rom[6'd11] <= 8'h00;  // 30 ^ 30
+    ep_rom[6'd12] <= 8'h03;  // 30 ^ 33
+    ep_rom[6'd13] <= 8'h01;  // 30 ^ 31
+    ep_rom[6'd14] <= 8'h02;  // 30 ^ 32
+    ep_rom[6'd15] <= 8'h00;  // 2d ^ 2d
+    ep_rom[6'd16] <= 8'h00;  // 30 ^ 30
+    ep_rom[6'd17] <= 8'h00;  // 30 ^ 30
+    ep_rom[6'd18] <= 8'h00;  // 30 ^ 30
+    ep_rom[6'd19] <= 8'h01;  // 30 ^ 31
+    // Vendor Spec info
+    ep_rom[6'd20] <= 8'h00;  // dd ^ dd
+    ep_rom[6'd21] <= 8'h00;  // 0c ^ 0c
+    ep_rom[6'd22] <= 8'h00;  // 54 ^ 54
+    ep_rom[6'd23] <= 8'h00;  // 4a ^ 4a
+    ep_rom[6'd24] <= 8'h00;  // 55 ^ 55
+    ep_rom[6'd25] <= 8'h00;  // 00 ^ 00
+    // payload 2
+    ep_rom[6'd26] <= 8'h00;  // 00 ^ 00
+    ep_rom[6'd27] <= 8'h00;  // 00 ^ 00
+    ep_rom[6'd28] <= 8'h00;  // 00 ^ 00
+    ep_rom[6'd29] <= 8'h00;  // 00 ^ 00
+    ep_rom[6'd30] <= 8'h00;  // 00 ^ 00
+    ep_rom[6'd31] <= 8'h00;  // 00 ^ 00
+    ep_rom[6'd32] <= 8'h00;  // 00 ^ 00
+    ep_rom[6'd33] <= 8'h00;  // 00 ^ 00
+    // crc32 placehold
+    ep_rom[6'd34] <= 8'h00;
+    ep_rom[6'd35] <= 8'h00;
+    ep_rom[6'd36] <= 8'h00;
+    ep_rom[6'd37] <= 8'h00;
+
+  end
+
 endmodule
