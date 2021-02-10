@@ -18,6 +18,7 @@ module loctag (
 
   ///////////////// 端口设置 /////////////
   assign lt5534_en = 1'b1;
+  assign led  = trig;
   
   ///////////////// 参数定义 /////////////  
   // MAC协议参数
@@ -27,10 +28,12 @@ module loctag (
   localparam TRIG_RISE_TIME = 0;  // uint: 20ns
   // 探测包
 
-  // 11b
+  // 11b, 1Mbps
+  // PLCP header 144+48, before_mod: 34*8=272, mod: 34*8=272, crc: 32.
+  // summary: 192+272 464+272+32= 736+32
   localparam T_B_INFO_GOT = 3;
-  localparam T_B_MOD_START = 141;
-  localparam T_B_CRC_START = 320;
+  localparam T_B_MOD_START = 461;
+  localparam T_B_CRC_START = 272;
   localparam T_B_CRC_END = 32;
   // 11n
   localparam T_N_INFO_GOT = 2;
@@ -54,10 +57,7 @@ module loctag (
   localparam N_MOD_START = 20;
   localparam N_WAIT_END = 21;
 
-  /////////////// 变量与信号定义 ////////////
-  // 状态变量
-  reg [4:0] state = IDLE;
-  // 由trig和定时驱动状态的转移 
+  //////////////////// 计时器 /////////////////////
   reg [5:0] divide_counter = 0;
   reg [26:0] us_counter = 0;
   
@@ -83,17 +83,74 @@ module loctag (
       next_us <= 0;
     end 
   end
-  
+
+
+  ////////////////////// 状态机 /////////////////
+  // 状态变量
+  reg [4:0] state = IDLE;
+  // 状态信号
+  wire adc_eoc; // ADC转换完成
+  // 控制信号
+  reg  fs_en = 0;
+  reg  adc_soc = 0;
+  reg  b_crc_compute = 0;
+  reg  b_mod_start = 0;
+  reg  b_rom_out_enable = 0;
+  reg  b_crc32_out_enable = 0;
+  // 反射开关控制信号
+  wire b_mod_out;
+  wire mod_invert = b_mod_start & b_mod_out; 
+  assign ctrl_1 = (clk & fs_en) ^ mod_invert; 
+  // adc
+  wire [7:0] adc_data;
+  // common ROM Access
+  localparam ADDR_WIDTH = 6;
+  localparam ROM_SIZE = (2<<ADDR_WIDTH);
+  reg  [ADDR_WIDTH-1:0] rom_addr = 0;
+  reg  [0:2] bit_addr = 0;
+  // 11b ROM
+  reg  [7:0] b_rom[0:ROM_SIZE-1];
+  wire [7:0] b_rom_data = b_rom[rom_addr];
+ 
+  // 11b fcs
+  wire [31:0] b_fcs_for_xor;
+  reg  [31:0] b_fcs_data = 0;
+
+  // 11b 输入到调制器的串行数据
+  wire b_s_data = (b_rom_out_enable & b_rom_data[bit_addr])
+                  | (b_crc32_out_enable & b_fcs_data[31]);
+
+  // 状态机
   always @(posedge clk) begin
     if (force_fs) begin
       state <= FORCE_FS;
       counter_rst <= 1;
+      
+      fs_en <= 1;
+      adc_soc <= 0;
+      b_crc_compute <= 0;
+      b_mod_start <= 0;
+      b_rom_out_enable <= 0;
+      b_crc32_out_enable <= 0;
+
+      rom_addr <= 6'd00;
+      bit_addr <= 0;
     end else if (~trig) begin
       state <= IDLE;
       counter_rst <= 1;
+
+      fs_en <= 0;
+      adc_soc <= 0;
+      b_crc_compute <= 0;
+      b_mod_start <= 0;
+      b_rom_out_enable <= 0;
+      b_crc32_out_enable <= 0;
+
+      rom_addr <= 6'd00;
+      bit_addr <= 0;
+
     end else begin
       case (state)
-
         IDLE : begin
           case (mode)
             2'b10: begin
@@ -110,6 +167,16 @@ module loctag (
             end
           endcase
           counter_rst <= 1;
+
+          fs_en <= 0;
+          adc_soc <= 0;
+          b_crc_compute <= 0;
+          b_mod_start <= 0;
+          b_rom_out_enable <= 0;
+          b_crc32_out_enable <= 0;
+
+          rom_addr <= 6'd00;
+          bit_addr <= 0;
         end
 
         B_START : begin
@@ -120,6 +187,21 @@ module loctag (
             state <= B_START;
             counter_rst <= 0;
           end
+
+          fs_en <= 1;
+          adc_soc <= 1;
+          b_crc_compute <= 0;
+          b_mod_start <= 0;
+          b_rom_out_enable <= 0;
+          b_crc32_out_enable <= 0;
+
+          rom_addr <= 6'd26; // 准备写8-bit ADC数据
+          bit_addr <= 0;
+
+          if (adc_eoc)
+            b_rom[rom_addr] <= adc_data;
+          else
+            b_rom[rom_addr] <= b_rom[rom_addr];
         end
 
         B_INFO_GOT : begin
@@ -130,15 +212,44 @@ module loctag (
             state <= B_INFO_GOT;
             counter_rst <= 0;
           end
+
+          fs_en <= 1;
+          adc_soc <= 0;
+          b_crc_compute <= 0;
+          b_mod_start <= 0;
+          b_rom_out_enable <= 0;
+          b_crc32_out_enable <= 0;
+      
+          bit_addr <= 0;
+          rom_addr <= 6'd00;
         end
         
         B_MOD_START : begin
           if (us_counter == T_B_CRC_START) begin
             state <= B_CRC_START;
             counter_rst <= 1;
+            b_fcs_data <= b_fcs_for_xor; //
           end else begin
             state <= B_MOD_START;
             counter_rst <= 0;
+          end
+
+          fs_en <= 1;
+          adc_soc <= 0;
+          b_crc_compute <= 1;
+          b_mod_start <= 1;
+          b_rom_out_enable <= 1;
+          b_crc32_out_enable <= 0;
+
+          if (next_us) begin
+            bit_addr <= bit_addr+1;
+            if (bit_addr == 7) begin
+              rom_addr <= rom_addr+1;
+            end else begin
+              rom_addr <= rom_addr;
+            end  
+          end else begin
+            bit_addr <= bit_addr;
           end
         end
         
@@ -153,6 +264,22 @@ module loctag (
             state <= B_CRC_START;
             counter_rst <= 0;
           end
+
+          fs_en <= 1;
+          adc_soc <= 0;
+          b_crc_compute <= 0;
+          b_mod_start <= 1;
+          b_rom_out_enable <= 0;
+          b_crc32_out_enable <= 1;
+
+          rom_addr <= 6'd00;
+          bit_addr <= 0;          
+
+          if (next_us) begin
+            b_fcs_data[31:0] <= {b_fcs_data[30:0], 1'b0};
+          end else begin
+            b_fcs_data <= b_fcs_data;
+          end
         end
 
         B_WAIT_END : begin
@@ -163,6 +290,16 @@ module loctag (
             state <= B_WAIT_END;
             counter_rst <= 0;
           end
+
+          fs_en <= 1;
+          adc_soc <= 0;
+          b_crc_compute <= 0;
+          b_mod_start <= 1;
+          b_rom_out_enable <= 0;
+          b_crc32_out_enable <= 0;
+
+          rom_addr <= 6'd00;
+          bit_addr <= 0;   
         end
 
         N_START : begin
@@ -211,127 +348,22 @@ module loctag (
         default: begin
           state <= IDLE;
           counter_rst <= 1;
+
+          fs_en <= 0;
+          adc_soc <= 0;
+          b_crc_compute <= 0;
+          b_mod_start <= 0;
+          b_rom_out_enable <= 0;
+          b_crc32_out_enable <= 0;
+
+          rom_addr <= 6'd00;
+          bit_addr <= 0;   
         end
 
       endcase
     end // if-else-end  
   end
 
-  // ADC: B_START, N_START
-  reg  adc_soc = 0;
-  wire adc_eoc;
-  wire [7:0] adc_data;
-  reg  [7:0] rss = 8'hff;
-
-  // 反射调制
-  reg  fs_en = 0;
-  reg  mod_invert = 0;
-  assign ctrl_1 = (clk & fs_en) ^ mod_invert;
-  
-  reg  b_mod_start = 0;
-  reg  b_crc_compute = 0;
-  wire b_mod_out;
-
-  // ROM Access
-  localparam ADDR_WIDTH = 6;
-  localparam ROM_SIZE = (2<<ADDR_WIDTH);
-  reg  [7:0] ep_rom[0:ROM_SIZE-1];
-
-  reg  [ADDR_WIDTH-1:0] rom_addr = 0;
-  reg  [0:2] bit_addr = 0;
-  wire [7:0] rom_data = ep_rom[rom_addr];
-  wire s_data = rom_data[bit_addr];
-
-  // 调制数据  
-  wire [31:0] fcs_for_xor;
-  reg  [31:0] b_fcs_data = 0;
-
-  localparam N_LEN = 8;
-  reg [N_LEN-1:0] n_data;
-  wire n_s_dat = n_data[N_LEN-1];
-  
-  always @(posedge clk) begin
-    case (state)
-      B_START : begin
-        fs_en <= 1;
-        data <= 0;
-        b_mod_start <= 0;
-        b_crc_compute <= 0;
-        adc_soc <= 1;
-        rss <= 8'hff;
-      end
-
-      B_INFO_GOT : begin
-        fs_en <= 1;
-        data <= 0;
-        b_mod_start <= 0;
-        b_crc_compute <= 0;
-        adc_soc <= 0;
-        if (adc_eoc)
-          rss <= adc_data;
-        else
-          rss <= rss;
-      end
-
-      B_MOD_START : begin
-        fs_en <= 1;
-        mod_invert <= b_mod_out;
-        b_mod_start <= 1;
-        b_crc_compute <= 1;
-        adc_soc <= 0;
-        rss <= rss;
-        if (next_us && p2s_counter == 7) begin
-          p2s_counter <= 0;
-          data <= rom_data;
-          rom_addr <= rom_addr+1;
-          
-          data[B_LEN-1:0] <= {data[B_LEN-2:0], 1'b0};
-          p2s_counter <= p2s_counter+1;
-        end else if (next_us) begin
-            p2s_counter <= 0;
-            data <= rom_data;
-            rom_addr <= rom_addr+1;
-          end else begin
-            p2s_counter <= 0;
-            data <= rom_data;
-            rom_addr <= rom_addr;
-          end
-        else
-          data <= data;
-          p2s_counter <= p2s_counter;
-      end
-
-      B_CRC_START : begin
-        fs_en <= 1;
-        mod_invert <= b_mod_out;
-        b_mod_start <= 1;
-        b_crc_compute <= 0;
-        b_fcs_data <= fcs_for_xor;
-        adc_soc <= 0;
-        rss <= rss;
-      end
-
-      B_WAIT_END : begin
-        fs_en <= 1;
-        mod_invert <= b_mod_out;
-        b_mod_start <= 1;
-        b_crc_compute <= 0;
-        adc_soc <= 0;
-        rss <= rss;
-      end
-      
-
-      default: begin
-        fs_en <= 1;
-        mod_invert <= 0;
-        b_mod_start <= 0;
-        b_crc_compute <= 0;
-        adc_soc <= 0;
-        rss <= 8'hff;
-      end
-
-    endcase
-  end
 
   reg clk_25mhz = 0;
 	reg clk_12mhz = 0;
@@ -351,67 +383,66 @@ module loctag (
   b_modulator b_modulator_inst (
     .clk(next_us),
     .enable(b_mod_start),
-    .s_in(b_s_dat),
+    .s_in(b_s_data),
     .s_out(b_mod_out)
   );
 
   fcs_for_xor fcs_for_xor_inst (
     .clk(next_us),
     .enable(b_crc_compute),
-    .s_in(b_s_dat),
-    .fcs_for_xor(fcs_for_xor),
+    .s_in(b_s_data),
+    .val(b_fcs_for_xor)
   );
-
-  assign led  = trig;
-
 
 
   initial begin
     // tx_data ^ expected_data
-    ep_rom[6'd00] <= 8'h00;  // 00 ^ 00
-    ep_rom[6'd01] <= 8'h00;  // 00 ^ 00
+    ////// 固定数据部分 /////
+    b_rom[6'd00] <= 8'h00;  // 00 ^ 00
+    b_rom[6'd01] <= 8'h00;  // 00 ^ 00
     // SSID Ext
-    ep_rom[6'd02] <= 8'h00;  // 00 ^ 00
+    b_rom[6'd02] <= 8'h00;  // 00 ^ 00
     // SSID len
-    ep_rom[6'd03] <= 8'h00;  // 10 ^ 10
+    b_rom[6'd03] <= 8'h00;  // 10 ^ 10
     // SSID 
-    ep_rom[6'd04] <= 8'h7c;  // 30 ^ 4c
-    ep_rom[6'd05] <= 8'h7f;  // 30 ^ 4f
-    ep_rom[6'd06] <= 8'h73;  // 30 ^ 43
-    ep_rom[6'd07] <= 8'h64;  // 30 ^ 54
-    ep_rom[6'd08] <= 8'h71;  // 30 ^ 41
-    ep_rom[6'd09] <= 8'h77;  // 30 ^ 47
-    ep_rom[6'd10] <= 8'h00;  // 2d ^ 2d
-    ep_rom[6'd11] <= 8'h00;  // 30 ^ 30
-    ep_rom[6'd12] <= 8'h03;  // 30 ^ 33
-    ep_rom[6'd13] <= 8'h01;  // 30 ^ 31
-    ep_rom[6'd14] <= 8'h02;  // 30 ^ 32
-    ep_rom[6'd15] <= 8'h00;  // 2d ^ 2d
-    ep_rom[6'd16] <= 8'h00;  // 30 ^ 30
-    ep_rom[6'd17] <= 8'h00;  // 30 ^ 30
-    ep_rom[6'd18] <= 8'h00;  // 30 ^ 30
-    ep_rom[6'd19] <= 8'h01;  // 30 ^ 31
+    b_rom[6'd04] <= 8'h7c;  // 30 ^ 4c
+    b_rom[6'd05] <= 8'h7f;  // 30 ^ 4f
+    b_rom[6'd06] <= 8'h73;  // 30 ^ 43
+    b_rom[6'd07] <= 8'h64;  // 30 ^ 54
+    b_rom[6'd08] <= 8'h71;  // 30 ^ 41
+    b_rom[6'd09] <= 8'h77;  // 30 ^ 47
+    b_rom[6'd10] <= 8'h00;  // 2d ^ 2d
+    b_rom[6'd11] <= 8'h00;  // 30 ^ 30
+    b_rom[6'd12] <= 8'h03;  // 30 ^ 33
+    b_rom[6'd13] <= 8'h01;  // 30 ^ 31
+    b_rom[6'd14] <= 8'h02;  // 30 ^ 32
+    b_rom[6'd15] <= 8'h00;  // 2d ^ 2d
+    b_rom[6'd16] <= 8'h00;  // 30 ^ 30
+    b_rom[6'd17] <= 8'h00;  // 30 ^ 30
+    b_rom[6'd18] <= 8'h00;  // 30 ^ 30
+    b_rom[6'd19] <= 8'h01;  // 30 ^ 31
     // Vendor Spec info
-    ep_rom[6'd20] <= 8'h00;  // dd ^ dd
-    ep_rom[6'd21] <= 8'h00;  // 0c ^ 0c
-    ep_rom[6'd22] <= 8'h00;  // 54 ^ 54
-    ep_rom[6'd23] <= 8'h00;  // 4a ^ 4a
-    ep_rom[6'd24] <= 8'h00;  // 55 ^ 55
-    ep_rom[6'd25] <= 8'h00;  // 00 ^ 00
+    b_rom[6'd20] <= 8'h00;  // dd ^ dd
+    b_rom[6'd21] <= 8'h00;  // 0c ^ 0c
+    b_rom[6'd22] <= 8'h00;  // 54 ^ 54
+    b_rom[6'd23] <= 8'h00;  // 4a ^ 4a
+    b_rom[6'd24] <= 8'h00;  // 55 ^ 55
+    b_rom[6'd25] <= 8'h00;  // 00 ^ 00
+    ////// 可变数据部分 /////
     // payload 2
-    ep_rom[6'd26] <= 8'h00;  // 00 ^ 00
-    ep_rom[6'd27] <= 8'h00;  // 00 ^ 00
-    ep_rom[6'd28] <= 8'h00;  // 00 ^ 00
-    ep_rom[6'd29] <= 8'h00;  // 00 ^ 00
-    ep_rom[6'd30] <= 8'h00;  // 00 ^ 00
-    ep_rom[6'd31] <= 8'h00;  // 00 ^ 00
-    ep_rom[6'd32] <= 8'h00;  // 00 ^ 00
-    ep_rom[6'd33] <= 8'h00;  // 00 ^ 00
+    b_rom[6'd26] <= 8'h00;  // 00 ^ 00
+    b_rom[6'd27] <= 8'h00;  // 00 ^ 00
+    b_rom[6'd28] <= 8'h00;  // 00 ^ 00
+    b_rom[6'd29] <= 8'h00;  // 00 ^ 00
+    b_rom[6'd30] <= 8'h00;  // 00 ^ 00
+    b_rom[6'd31] <= 8'h00;  // 00 ^ 00
+    b_rom[6'd32] <= 8'h00;  // 00 ^ 00
+    b_rom[6'd33] <= 8'h00;  // 00 ^ 00
     // crc32 placehold
-    ep_rom[6'd34] <= 8'h00;
-    ep_rom[6'd35] <= 8'h00;
-    ep_rom[6'd36] <= 8'h00;
-    ep_rom[6'd37] <= 8'h00;
+    b_rom[6'd34] <= 8'h00;
+    b_rom[6'd35] <= 8'h00;
+    b_rom[6'd36] <= 8'h00;
+    b_rom[6'd37] <= 8'h00;
 
   end
 

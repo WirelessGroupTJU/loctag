@@ -4,7 +4,7 @@ module fcs_for_xor_tb;
   reg clk;
   reg enable;
   wire s_in;
-  wire [31:0] fcs_for_xor;
+  wire [31:0] val;
 
   localparam  P = 20;
   reg  [15:0] data = 16'h1100; // 120031ef;
@@ -36,7 +36,7 @@ module fcs_for_xor_tb;
   clk,
   enable,
   s_in,
-  fcs_for_xor
+  val
   );
 
 endmodule
