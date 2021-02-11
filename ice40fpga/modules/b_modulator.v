@@ -1,8 +1,8 @@
 `timescale 1ns/1ns
 
 module b_modulator # (
-  parameter SCRAMBLER_INIT_VAL = 8'h00,
-  parameter DBPSK_INIT_VAL = 1'b0
+  parameter SCRAMBLER_INIT_VAL = 8'hff,
+  parameter DBPSK_INIT_VAL = 1'b1
   )
   (
   input clk,

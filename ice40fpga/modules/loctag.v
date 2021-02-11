@@ -25,14 +25,14 @@ module loctag (
   localparam Q = 2;
 
   // 定时参数
-  localparam TRIG_RISE_TIME = 0;  // uint: 20ns
+  localparam TRIG_RISE_TIME = 1;  // uint: 20ns
   // 探测包
 
   // 11b, 1Mbps
   // PLCP header 144+48, before_mod: 34*8=272, mod: 34*8=272, crc: 32.
-  // summary: 192+272 464+272+32= 736+32
+  // summary: 464+272+32= 736+32
   localparam T_B_INFO_GOT = 3;
-  localparam T_B_MOD_START = 461;
+  localparam T_B_MOD_START = 462; // 检测延迟
   localparam T_B_CRC_START = 272;
   localparam T_B_CRC_END = 32;
   // 11n
@@ -62,25 +62,24 @@ module loctag (
   reg [26:0] us_counter = 0;
   
   reg counter_rst = 0;
-  reg next_us = 0;
+  wire next_us = divide_counter == 49? 1: 0;
+  wire next_us_0 = divide_counter == 0? 1: 0;
+  wire next_us_3 = divide_counter == 3? 1: 0;
+  wire next_us_9 = divide_counter == 40? 1: 0;
 
   always @(posedge clk) begin
     if (reset) begin
       divide_counter <= 0;
       us_counter <= 0;
-      next_us <= 0;
     end else if (counter_rst) begin
       divide_counter <= 2;
       us_counter <= 0;
-      next_us <= 0;
     end else if (divide_counter == 49) begin
       divide_counter <= 0;
       us_counter <= us_counter + 1;
-      next_us <= 1;
     end else begin
       divide_counter <= divide_counter + 1;
       us_counter <= us_counter;
-      next_us <= 0;
     end 
   end
 
@@ -99,8 +98,12 @@ module loctag (
   reg  b_crc32_out_enable = 0;
   // 反射开关控制信号
   wire b_mod_out;
-  wire mod_invert = b_mod_start & b_mod_out; 
+  reg  mod_invert = 0;
+  wire mod_invert_tmp = b_mod_start & b_mod_out; 
   assign ctrl_1 = (clk & fs_en) ^ mod_invert; 
+  always @(posedge next_us_9) begin
+    mod_invert <= mod_invert_tmp; // 防止毛刺
+  end
   // adc
   wire [7:0] adc_data;
   // common ROM Access
@@ -381,14 +384,14 @@ module loctag (
   );
 
   b_modulator b_modulator_inst (
-    .clk(next_us),
+    .clk(next_us_0),
     .enable(b_mod_start),
     .s_in(b_s_data),
     .s_out(b_mod_out)
   );
 
   fcs_for_xor fcs_for_xor_inst (
-    .clk(next_us),
+    .clk(next_us_3),
     .enable(b_crc_compute),
     .s_in(b_s_data),
     .val(b_fcs_for_xor)

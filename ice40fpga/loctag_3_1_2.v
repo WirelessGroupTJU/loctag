@@ -51,7 +51,7 @@ module loctag_3_1_2 (
     .adc_cs(pin_adc_cs),
     .adc_clk(pin_adc_clk),
     .adc_so(pin_adc_so),
-    .trig(pin_trig),
+    .trig(trig),
 
     .ctrl_1(pin_ctrl_1),
 
