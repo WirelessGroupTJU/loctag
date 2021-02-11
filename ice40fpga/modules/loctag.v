@@ -63,9 +63,8 @@ module loctag (
   
   reg counter_rst = 0;
   wire next_us = divide_counter == 49? 1: 0;
-  wire next_us_0 = divide_counter == 0? 1: 0;
   wire next_us_3 = divide_counter == 3? 1: 0;
-  wire next_us_9 = divide_counter == 40? 1: 0;
+  wire next_us_5 = divide_counter == 5? 1: 0;
 
   always @(posedge clk) begin
     if (reset) begin
@@ -101,7 +100,7 @@ module loctag (
   reg  mod_invert = 0;
   wire mod_invert_tmp = b_mod_start & b_mod_out; 
   assign ctrl_1 = (clk & fs_en) ^ mod_invert; 
-  always @(posedge next_us_9) begin
+  always @(posedge next_us_5) begin
     mod_invert <= mod_invert_tmp; // 防止毛刺
   end
   // adc
@@ -384,7 +383,7 @@ module loctag (
   );
 
   b_modulator b_modulator_inst (
-    .clk(next_us_0),
+    .clk(next_us),
     .enable(b_mod_start),
     .s_in(b_s_data),
     .s_out(b_mod_out)

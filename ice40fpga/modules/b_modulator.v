@@ -1,8 +1,8 @@
 `timescale 1ns/1ns
 
 module b_modulator # (
-  parameter SCRAMBLER_INIT_VAL = 8'hff,
-  parameter DBPSK_INIT_VAL = 1'b1
+  parameter SCRAMBLER_INIT_VAL = 8'h00,
+  parameter DBPSK_INIT_VAL = 1'b0
   )
   (
   input clk,
@@ -11,7 +11,7 @@ module b_modulator # (
   output s_out
   );
   
-  reg  [7:0] scrambler = SCRAMBLER_INIT_VAL;
+  reg  [6:0] scrambler = SCRAMBLER_INIT_VAL;
   reg  [0:0] dbpsk = DBPSK_INIT_VAL;
   // y[k] = x[k] + y[k-4] + y[k-7]
   wire scrambler_out = s_in ^ scrambler[3] ^ scrambler[6];

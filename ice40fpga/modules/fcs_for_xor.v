@@ -14,7 +14,7 @@ module fcs_for_xor # (
   reg  [31:0] state = STATE_INIT_VAL; // 计算输入序列s_in的CRC32值,位31是最高项系数
   reg  [31:0] state_zeros_in = STATE_INIT_VAL; // 计算与s_in长度相同的0序列的CRC32
   
-  assign val = state; // ^ state_zeros_in; // ~state ^ ~state_zeros_in;
+  assign val = state ^ state_zeros_in; // ~state ^ ~state_zeros_in;
 
   always @(posedge clk) begin
     if (~enable) begin
