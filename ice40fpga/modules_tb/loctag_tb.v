@@ -14,16 +14,20 @@ module loctag_tb;
     adc_so <= 0;
     trig <= 0;
     force_fs <= 0;
-    mode <= 2'b10;
+    mode <= 2'b01;
     #100
     reset <= 0;
     #900
     trig <= 1;
+
   end
 
   always #10 clk <= ~clk;
   
-  loctag loctag_inst (
+  loctag #(
+    .MAC_Q(0),
+    .N_SUBFRAME_NUM(16)
+  )loctag_inst (
     // 50MHz clock input
     clk,
     reset,
