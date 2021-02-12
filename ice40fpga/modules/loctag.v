@@ -25,14 +25,16 @@ module loctag (
   localparam Q = 2;
 
   // 定时参数
-  localparam TRIG_RISE_TIME = 1;  // uint: 20ns
+  localparam TRIG_DELAY_COMPENSATION_US = 2;  // 提前多少us开始调制过程，以补偿TRIG检测延迟
+  localparam TRIG_DELAY_COMPENSATION_20NS = 25;  // 在us级补偿的基础上延迟多少个20ns开始调制，取值范围为1到48
+  // 
   // 探测包
 
   // 11b, 1Mbps
   // PLCP header 144+48, before_mod: 34*8=272, mod: 34*8=272, crc: 32.
   // summary: 464+272+32= 736+32
   localparam T_B_INFO_GOT = 3;
-  localparam T_B_MOD_START = 462; // 检测延迟
+  localparam T_B_MOD_START = 461-TRIG_DELAY_COMPENSATION_US; // 检测延迟
   localparam T_B_CRC_START = 272;
   localparam T_B_CRC_END = 32;
   // 11n
@@ -59,7 +61,7 @@ module loctag (
 
   //////////////////// 计时器 /////////////////////
   reg [5:0] divide_counter = 0;
-  reg [26:0] us_counter = 0;
+  reg [15:0] us_counter = 0;  // 65ms
   
   reg counter_rst = 0;
   wire next_us = divide_counter == 49? 1: 0;
@@ -207,7 +209,7 @@ module loctag (
         end
 
         B_INFO_GOT : begin
-          if (us_counter == T_B_MOD_START) begin
+          if (us_counter == T_B_MOD_START && divide_counter==TRIG_DELAY_COMPENSATION_20NS) begin
             state <= B_MOD_START;
             counter_rst <= 1;
           end else begin
@@ -440,7 +442,7 @@ module loctag (
     b_rom[6'd31] <= 8'h00;  // 00 ^ 00
     b_rom[6'd32] <= 8'h00;  // 00 ^ 00
     b_rom[6'd33] <= 8'h00;  // 00 ^ 00
-    // crc32 placehold
+    // crc32 placehold, unused
     b_rom[6'd34] <= 8'h00;
     b_rom[6'd35] <= 8'h00;
     b_rom[6'd36] <= 8'h00;
