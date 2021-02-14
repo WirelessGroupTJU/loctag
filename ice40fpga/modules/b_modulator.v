@@ -1,7 +1,7 @@
 `timescale 1ns/1ns
 
 module b_modulator # (
-  parameter SCRAMBLER_INIT_VAL = 8'h00,
+  parameter SCRAMBLER_INIT_VAL = 7'b000_0000,
   parameter DBPSK_INIT_VAL = 1'b0
   )
   (

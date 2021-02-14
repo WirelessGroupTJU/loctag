@@ -21,10 +21,12 @@ PIN_DEF = pins_$(H_VER).pcf
 DEVICE = up5k
 PKG = sg48
 SEED ?= 20210106
+MAC_SEED = $(shell python -c "import random; print('%04x'%random.randint(1,0xffff))")
 
 all: $(PROJ)_$(H_VER).bin
 
 %.json: %.v ./modules/*.v
+	@echo MAC_SEED=$(MAC_SEED)
 	yosys -q -p 'synth_ice40 -top $(basename $@) -json $@' $^
 
 %.asc: $(PIN_DEF) %.json

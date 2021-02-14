@@ -1,6 +1,6 @@
 `timescale 1ns/1ns
 module loctag # (
-    parameter TAG_ID = "LOCTAG-0312-0001",
+    parameter TAG_ID = "LOCTAG-0312-0000",
     parameter [15:0] MAC_SEED = 16'h4C06,
     parameter MAC_Q = 0,
     parameter N_SUBFRAME_NUM = 64,
@@ -44,8 +44,9 @@ module loctag # (
   localparam T_B_CRC_START = 272;
   localparam T_B_CRC_END = 32;
   // 11n. see TableIEEE Std 802.11-2016, Figure 19-4
+  // for MF, Preamble>=10sym(20us); for GF, Preamble>=6sym(24us)
   localparam T_N_INFO_GOT = 3;
-  localparam T_N_MOD_START = 64;
+  localparam T_N_MOD_START = 37;
   localparam T_N_SUBFRAME_LEN = 12;
 
   ///////////////// 状态定义 ///////////////
@@ -133,10 +134,10 @@ module loctag # (
     b_mod_invert <= b_mod_invert_tmp; // 防止毛刺
   end
   // 11n
-  reg  n_mod_invert = 0;
+  wire n_mod_out;
   
   // 反射开关控制信号 
-  wire mod_invert = b_mod_invert | n_mod_invert;
+  wire mod_invert = b_mod_invert | n_mod_out;
   assign ctrl_1 = (clk & fs_en) ^ mod_invert;  
   
   ////////// 数据 /////////
@@ -405,9 +406,9 @@ module loctag # (
           n_bit_addr <= 0;
 
           if (adc_eoc)
-            n_bit_rom[2*8+:8] <= adc_data;
+            n_bit_rom[3*8+:8] <= adc_data;
           else
-            n_bit_rom[2*8+:8] <= n_bit_rom[2*8+:8];
+            n_bit_rom[3*8+:8] <= n_bit_rom[3*8+:8];
         end
 
         N_INFO_GOT : begin
@@ -544,6 +545,12 @@ module loctag # (
     .enable(b_crc_compute),
     .s_in(b_s_data),
     .val(b_fcs_for_xor)
+  );
+
+  n_disturber n_disturber_inst  (
+    .clk(clk),
+    .enable(n_demage),
+    .s_out(n_mod_out)
   );
 
   mac # (
