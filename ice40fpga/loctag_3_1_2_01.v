@@ -1,5 +1,5 @@
 `timescale 1ns/1ns
-module loctag_3_1_2 (
+module loctag_3_1_2_01 (
   // 16MHz clock input
   input  pin_clk,
   // detector
@@ -34,7 +34,7 @@ module loctag_3_1_2 (
    // 时钟与复位
   wire clk;
   wire reset; 
-  pll pll_inst(
+  pll pll_inst (
     .clk_in(pin_clk),
     .clk_out(clk),
     .reset(reset)
@@ -43,7 +43,11 @@ module loctag_3_1_2 (
   wire trig = ~pin_trig;
   wire led;
   
-  loctag loctag_inst (
+  loctag  # (
+    .TAG_ID("LOCTAG-0312-0001"),
+    .MAC_SEED(16'h7654),
+    .MAC_Q(2)
+  ) loctag_inst (
     // 50MHz clock input
     .clk(clk),
     .reset(reset),
