@@ -10,7 +10,7 @@ from scapy.all import ( Dot11,
                         )
 import os
 
-iface = 'wlan1'
+iface = 'wlan0'
 
 bc_mac = 'ff:ff:ff:ff:ff:ff'
 bssid = 'b4:ee:b4:b7:0b:3c'

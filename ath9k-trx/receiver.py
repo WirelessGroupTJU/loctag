@@ -60,11 +60,11 @@ class Receiver:
         self.rx_cnt = 0
         self.tags = {} # tag_id: [counter, [(rssi, timestamp, data)]]
         # Send transmission request to Tx
-        send_req_frame()
+        self.send_req_frame()
         # Receive packets from Tx
         self.num = send_pattern[0]*(send_pattern[1]+send_pattern[2])
         sniff(iface=self.iface, filter=self.filter_exp, prn=self.PacketHandler, count=self.num)
 
 if __name__ == "__main__":
-    receiver = Receiver(iface='wlan1')
+    receiver = Receiver(iface='wlan0')
     receiver.run(isFilter=True)
