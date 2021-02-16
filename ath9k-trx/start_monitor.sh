@@ -6,3 +6,4 @@ if [ x$1 = x ]; then
     iw dev wlan0 set channel 11
 else
     iw dev wlan0 set channel $1
+fi
