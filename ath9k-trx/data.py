@@ -27,5 +27,7 @@ data = ('\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff')
 mpdu_header = Dot11(type=2, subtype=0, addr1=rx_mac, addr2=tx_mac, addr3=bssid)
 
 frame = radiotap_ht/mpdu_header/data
-
-sendp(frame, iface=iface, inter=0.100, loop=1)
+try:
+    sendp(frame, iface=iface, inter=0.020, loop=1, verbose=False)
+except KeyboardInterrupt:
+    print('Interrupted by user')

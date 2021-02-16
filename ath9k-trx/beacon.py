@@ -34,4 +34,8 @@ frame = radiotap_bga/mpdu_header/beacon/essid/vendor_data
 
 hexdump(raw(mpdu_header/beacon/essid/vendor_data))
 
-sendp(frame, iface=iface, inter=0.100, loop=1)
+try:
+    sendp(frame, iface=iface, inter=0.020, loop=1, verbose=False)
+except KeyboardInterrupt:
+    print('Interrupted by user')
+

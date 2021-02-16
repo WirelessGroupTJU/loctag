@@ -66,14 +66,17 @@ class Sender:
             cnt = cnt + 1
             print('start %d'%cnt)
             # Start a round of transmission
-            for i in range(send_pattern[0]):
-                for j in range(send_pattern[1]):
-                    self.send_beacon_frame()
-                for j in range(send_pattern[2]):
-                    self.send_data_frame()
-            for i in range(2):
-                self.send_end_frame()
+            try:
+                for i in range(send_pattern[0]):
+                    for j in range(send_pattern[1]):
+                        self.send_beacon_frame()
+                    for j in range(send_pattern[2]):
+                        self.send_data_frame()
+                for i in range(2):
+                    self.send_end_frame()
+            except KeyboardInterrupt:
+                print('Interrupted by user')
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     sender = Sender(iface='wlan0')
-    sender.run(isPassive=True)
+    sender.run(isPassive=False, send_pattern=(6, 1, 2))

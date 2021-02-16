@@ -3,12 +3,7 @@ from scapy.all import ( Dot11, Dot11Beacon, Dot11Elt, Dot11EltVendorSpecific, Ra
                         sendp, sniff,
                         raw, hexdump,
                         )
-import os, sys, struct
-
-class Tag:
-
-    def __init__(self, id):
-        self.id = id
+import os, sys, struct, signal
 
 class Receiver:
 
@@ -37,17 +32,20 @@ class Receiver:
         if pkt.haslayer(Dot11Beacon):
             ssid = pkt.info
             timestamp = pkt.getlayer(Dot11Beacon).timestamp
-            data = pkt.getlayer(Dot11EltVendorSpecific).info if pkt.haslayer(Dot11EltVendorSpecific) else b''
-
-            if ssid in self.tags:
-                self.tags[ssid][0] = self.tags[ssid][0] + 1
-                self.tags[ssid][1].append((rssi, timestamp, data))
-            else:
-                self.tags[ssid] = [1, [(rssi, timestamp, data)]]
-            if ssid[0]==b'L':
+            if pkt.haslayer(Dot11EltVendorSpecific):
+                data = pkt.getlayer(Dot11EltVendorSpecific).info
                 tag_adc = data[4] if isinstance(data[4], int) else ord(data[4])
-                tag_rss = tag_adc&0xff*0.333 - 65.4
-                print('%04d %d %3.1f %d dBm %s %5.1f dBm' %(self.rx_cnt, rt.ChannelFrequency, rate, rssi, ssid, timestamp/1.0e6), tag_rss)
+            else:
+                tag_adc = 0
+
+            if ssid[6]==b'-':
+                self.records.append((ssid, rssi, timestamp, tag_adc))
+                if not self.file:
+                    self.file = open(self.filename, 'w')
+                for record in self.records:
+                    self.file.write('%s,%d,%d,%d\n'%(record[0],record[1],record[2],record[3]))
+                tag_rss = (tag_adc&0xff)*0.333 - 65.4
+                print('%04d %d %3.1f %4d dBm %s %.6f %5.1f dBm' %(self.rx_cnt, rt.ChannelFrequency, rate, rssi, ssid, timestamp/1.0e6, tag_rss))
         
         else:
             if rt.MCS_index is not None:
@@ -59,15 +57,21 @@ class Receiver:
     def run(self, isFilter=True, send_pattern=(0, 1, 2), time=0):
         self.time = time
         self.filter_exp = "ether host %s"%self.tx_mac if isFilter else ''
-
+        self.filename = time.strftime("tag-records-%Y%m%d%H%M%S.txt", time.localtime())
         self.rx_cnt = 0
-        self.tags = {} # tag_id: [counter, [(rssi, timestamp, data)]]
+        self.records = []  # [(tag_id, rssi, timestamp, tag_adc)]
         # Send transmission request to Tx
         self.send_req_frame()
         # Receive packets from Tx
         self.num = send_pattern[0]*(send_pattern[1]+send_pattern[2])
-        sniff(iface=self.iface, filter=self.filter_exp, prn=self.PacketHandler, count=self.num)
+        try:
+            sniff(iface=self.iface, filter=self.filter_exp, prn=self.PacketHandler, count=self.num)
+        except KeyboardInterrupt:
+            print('Interrupted by user')
+        finally:
+            self.file.close()
+            print('file %s write'%self.filename)
 
 if __name__ == "__main__":
     receiver = Receiver(iface='wlan0')
-    receiver.run(isFilter=True)
+    receiver.run(isFilter=True, send_pattern=(0, 1, 2))
