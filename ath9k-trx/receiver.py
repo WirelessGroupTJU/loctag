@@ -44,16 +44,19 @@ class Receiver:
                 self.tags[ssid][1].append((rssi, timestamp, data))
             else:
                 self.tags[ssid] = [1, [(rssi, timestamp, data)]]
-            print('%04d %d %3.1f %d dBm %s %.6f' %(self.rx_cnt, rt.ChannelFrequency, rate, rssi, ssid, timestamp/1.0e6), data[4])
+            if ssid[0]==b'L':
+                tag_adc = data[4] if isinstance(data[4], int) else ord(data[4])
+                tag_rss = tag_adc&0xff*0.333 - 65.4
+                print('%04d %d %3.1f %d dBm %s %5.1f dBm' %(self.rx_cnt, rt.ChannelFrequency, rate, rssi, ssid, timestamp/1.0e6), tag_rss)
         
         else:
-            if rt.MCS is not None:
+            if rt.MCS_index is not None:
                 print('%04d %d %d %d dBm' %(self.rx_cnt, rt.ChannelFrequency, rt.MCS_index, rssi))
             else:
                 print('%04d %d %3.1f %d dBm' %(self.rx_cnt, rt.ChannelFrequency, rate, rssi))
         self.rx_cnt = self.rx_cnt+1
 
-    def run(self, isFilter=True, send_pattern=(6, 1, 2), time=0):
+    def run(self, isFilter=True, send_pattern=(0, 1, 2), time=0):
         self.time = time
         self.filter_exp = "ether host %s"%self.tx_mac if isFilter else ''
 

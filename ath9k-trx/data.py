@@ -28,4 +28,4 @@ mpdu_header = Dot11(type=2, subtype=0, addr1=rx_mac, addr2=tx_mac, addr3=bssid)
 
 frame = radiotap_ht/mpdu_header/data
 
-sendp(frame, iface=iface, inter=1.000, loop=1)
+sendp(frame, iface=iface, inter=0.100, loop=1)
