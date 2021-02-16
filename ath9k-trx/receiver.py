@@ -44,13 +44,13 @@ class Receiver:
                 self.tags[ssid][1].append((rssi, timestamp, data))
             else:
                 self.tags[ssid] = [1, [(rssi, timestamp, data)]]
-            print(self.rx_cnt, rate, rssi, ssid, timestamp, data)
+            print('%04d %d %3.1f %d dBm %s %.6f' %(self.rx_cnt, rt.ChannelFrequency, rate, rssi, ssid, timestamp/1.0e6), data[4])
         
         else:
-            if rt.MCS:
-                print(self.rx_cnt, rt.MCS_index, rssi)
+            if rt.MCS is not None:
+                print('%04d %d %d %d dBm' %(self.rx_cnt, rt.ChannelFrequency, rt.MCS_index, rssi))
             else:
-                print(self.rx_cnt, rate, rssi)
+                print('%04d %d %3.1f %d dBm' %(self.rx_cnt, rt.ChannelFrequency, rate, rssi))
         self.rx_cnt = self.rx_cnt+1
 
     def run(self, isFilter=True, send_pattern=(6, 1, 2), time=0):
