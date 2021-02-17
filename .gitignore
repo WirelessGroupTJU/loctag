@@ -1,4 +1,7 @@
 reference/
+ath9k-trx/dataset/
+ath9k-trx/recvCSI/recv_csi
+*.csi
 
 # Prerequisites
 *.d
@@ -193,3 +196,4 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+.gitignore

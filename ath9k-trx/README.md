@@ -68,6 +68,10 @@ sudo cp ${USR_ATH9K}/ar9003_csi.ko ${SYS_ATH9K}/ar9003_csi.ko
 # 加载新驱动
 sudo modprobe -r ath9k ath9k_common ath9k_hw ar9003_csi
 sudo modprobe ath9k ath9k_common ath9k_hw ar9003_csi
+
+# 常用的调试命令
+sudo dmesg --clear
+sudo dmesg | grep 'loctag\|debug_csi'
 ```
 
 ## 使用修改过的Atheros-CSI-Tool-UserSpace-APP

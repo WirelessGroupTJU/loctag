@@ -3,7 +3,7 @@ from scapy.all import ( Dot11, Dot11Beacon, Dot11Elt, Dot11EltVendorSpecific, Ra
                         sendp, sniff,
                         raw, hexdump,
                         )
-import os, sys, struct, signal
+import os, sys, struct, signal, time
 
 class Receiver:
 
@@ -40,7 +40,7 @@ class Receiver:
 
             if ssid[6]==b'-':
                 self.records.append((ssid, rssi, timestamp, tag_adc))
-                if not self.file:
+                if not hasattr(self, 'file') or not self.file:
                     self.file = open(self.filename, 'w')
                 for record in self.records:
                     self.file.write('%s,%d,%d,%d\n'%(record[0],record[1],record[2],record[3]))
@@ -54,8 +54,8 @@ class Receiver:
                 print('%04d %d %3.1f %d dBm' %(self.rx_cnt, rt.ChannelFrequency, rate, rssi))
         self.rx_cnt = self.rx_cnt+1
 
-    def run(self, isFilter=True, send_pattern=(0, 1, 2), time=0):
-        self.time = time
+    def run(self, isFilter=True, send_pattern=(0, 1, 2), timelong=0):
+        self.time = timelong
         self.filter_exp = "ether host %s"%self.tx_mac if isFilter else ''
         self.filename = time.strftime("tag-records-%Y%m%d%H%M%S.txt", time.localtime())
         self.rx_cnt = 0
