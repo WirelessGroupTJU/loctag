@@ -103,8 +103,6 @@ int main(int argc, char* argv[])
     quit = 0;
     total_msg_cnt = 0;
     
-    write(fd, "\x0b\x01\xb4\xee\xb4\xb7\x0b\x3c", 8);
-
     while(1){
         if (1 == quit){
             return 0;
