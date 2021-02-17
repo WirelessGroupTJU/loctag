@@ -55,13 +55,15 @@ int main(int argc, char* argv[])
     u_int16_t   buf_len;
 
     int rssi, rssi_0, rssi_1, rssi_2, crcErr;
+    int txpower;
     float  tag_rss;
     char   crcFlag;
     
     log_flag = 1;
+    txpower = 0x3f;
     csi_status = (csi_struct*)malloc(sizeof(csi_struct));
     /* check usage */
-    if (1 == argc){
+    if (1 <= argc){
         /* If you want to log the CSI for off-line processing,
          * you need to specify the name of the output file
          */
@@ -70,7 +72,7 @@ int main(int argc, char* argv[])
         printf("/*   Usage: recv_csi <output_file>    */\n");
         printf("/**************************************/\n");
     }
-    if (2 == argc){
+    if (2 <= argc){
         fp = fopen(argv[1],"w");
         if (!fp){
             printf("Fail to open <output_file>, are you root?\n");
@@ -78,10 +80,17 @@ int main(int argc, char* argv[])
             return 0;
         }   
     }
-    if (argc > 2){
-        printf(" Too many input arguments !\n");
-        return 0;
+    if (3 <= argc){
+        txpower = strtol(argv[2], NULL, 0);
+        if (!errno){
+            printf("invalid txpower value: %s\n", argv[2]);
+            return 0;
+        }   
     }
+    // if (argc > 3){
+    //     printf(" Too many input arguments !\n");
+    //     return 0;
+    // }
 
     fd = open_csi_device();
     if (fd < 0){
@@ -129,7 +138,7 @@ int main(int argc, char* argv[])
             rssi_1 = csi_status->rssi_1 - 95;
             rssi_2 = csi_status->rssi_2 - 95;
             crcErr = csi_status->noise;
-            crcFlag = crcErr? '*': 'C';
+            crcFlag = crcErr? 'C': '*';
 
             if (csi_status->rate > 0x80) {
                 printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d  csi: %dx%dx%d\n", \
