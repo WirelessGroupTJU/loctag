@@ -54,6 +54,7 @@ int main(int argc, char* argv[])
     unsigned char endian_flag;
     u_int16_t   buf_len;
 
+    int rssi, rssi_0, rssi_1, rssi_2;
     float  tag_rss;
     
     log_flag = 1;
@@ -92,6 +93,8 @@ int main(int argc, char* argv[])
     quit = 0;
     total_msg_cnt = 0;
     
+    write(fd, "\x0b\x01\xb4\xee\xb4\xb7\x0b\x3c", 8);
+
     while(1){
         if (1 == quit){
             return 0;
@@ -120,47 +123,28 @@ int main(int argc, char* argv[])
              * with all those data, we can build our own processing function! 
              */
             // porcess_csi(data_buf, csi_status, csi_matrix);   
-            typedef struct
-{
-    u_int64_t tstamp;         /* h/w assigned time stamp */
-    
-    u_int16_t channel;        /* wireless channel (represented in Hz)*/
-    u_int8_t  chanBW;         /* channel bandwidth (0->20MHz,1->40MHz)*/
+            rssi = csi_status->rssi - 95;
+            rssi_0 = csi_status->rssi_0 - 95;
+            rssi_1 = csi_status->rssi_1 - 95;
+            rssi_2 = csi_status->rssi_2 - 95;
 
-    u_int8_t  rate;           /* transmission rate*/
-    u_int8_t  nr;             /* number of receiving antenna*/
-    u_int8_t  nc;             /* number of transmitting antenna*/
-    u_int8_t  num_tones;      /* number of tones (subcarriers) */
-    u_int8_t  noise;          /* noise floor (to be updated)*/
-
-    u_int8_t  phyerr;          /* phy error code (set to 0 if correct)*/
-
-    u_int8_t    rssi;         /*  rx frame RSSI */
-    u_int8_t    rssi_0;       /*  rx frame RSSI [ctl, chain 0] */
-    u_int8_t    rssi_1;       /*  rx frame RSSI [ctl, chain 1] */
-    u_int8_t    rssi_2;       /*  rx frame RSSI [ctl, chain 2] */
-
-    u_int16_t   payload_len;  /*  payload length (bytes) */
-    u_int16_t   csi_len;      /*  csi data length (bytes) */
-    u_int16_t   buf_len;      /*  data length in buffer */
-}csi_struct;
             if (csi_status->rate > 0x80) {
                 printf("%04d rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d  csi: %dx%dx%d\n", \
-                    total_msg_cnt, csi_status->rate, csi_status->rssi, csi_status->rssi_0, csi_status->rssi_1, \
-                    csi_status->rssi_2, csi_status->payload_len, \
+                    total_msg_cnt, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
+                    csi_status->payload_len, \
                     csi_status->nr, csi_status->nc, csi_status->num_tones );
             } else if (csi_status->rate == 0x1b) { //11b
                 if (mpdu[0] == 0x80) { //beacon
                     tag_rss = (unsigned int)mpdu[60]*0.333 - 65.4;
                     printf("%04d rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d  tag_rss: %5.1f %.*s\n", \
-                        total_msg_cnt, csi_status->rate, csi_status->rssi, csi_status->rssi_0, csi_status->rssi_1, \
-                        csi_status->rssi_2, csi_status->payload_len, \
+                        total_msg_cnt, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
+                        csi_status->payload_len, \
                         tag_rss, mpdu[37], &mpdu[38] );
                 }
             } else {
                 printf("%04d rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d\n", \
-                    total_msg_cnt, csi_status->rate, csi_status->rssi, csi_status->rssi_0, csi_status->rssi_1, \
-                    csi_status->rssi_2, csi_status->payload_len \
+                    total_msg_cnt, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
+                    csi_status->payload_len \
                     );
             }
             /* log the received data for off-line processing */
