@@ -19,7 +19,7 @@ set_io -nowarn  pin_mio_4      31   # IOT_42B
 set_io -nowarn  pin_mio_7      37   # IOT_45A_G1
 set_io -nowarn  pin_mio_8      35   # IOT_46B_G0
 set_io -nowarn  pin_mio_9      32   # IOT_43A
-set_io -nowarn  pin_mio_10     28   # IOT_41A
+set_io -nowarn -pullup yes -pullup_resistor 10K  pin_mio_10     28   # IOT_41A
 
 # USB
 set_io -nowarn  pin_usb_n      26   # IOT_39A

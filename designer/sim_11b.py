@@ -8,17 +8,17 @@ from Dot11Utils import *
 # 54: DDh  55: 0Ch  56-58: 'TJU'(OUI)  59,60-67: 0h
 # 68-71: FCS
 # 载包
-start_pos = 34
+start_pos = 4
 tx11b_pkt = (b'\x80\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xB4\xEE\xB4\xB7\x0B\x3C'
 b'\xB4\xEE\xB4\xB7\x0B\x3C\x00\x00\xFA\x23\xEB\x27\x01\x00\x00\x00'
-b'\x64\x00\x00\x00\x00\x10000000-000'
-b'0-0000\xDD\x0C\x54\x4A\x55\x00\x00\x00\x00\x00'
+b'\x64\x00\x00\x00\x00\x10000000-'
+b'00000\xDD\x0C\x54\x4A\x55\x00\x00\x00\x00\x00'
 b'\x00\x00\x00\x00') #FCS: 2A 8C 26 F2 :01010100001100010110010001001111
 # 期望的数据
 rx11b_pkt = (b'\x80\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xB4\xEE\xB4\xB7\x0B\x3C'
 b'\xB4\xEE\xB4\xB7\x0B\x3C\x00\x00\xFA\x23\xEB\x27\x01\x00\x00\x00'
-b'\x64\x00\x00\x00\x00\x10LOCTAG-031'
-b'2-0001\xDD\x0C\x54\x4A\x55\x00\x00\x00\x00\x00'
+b'\x64\x00\x00\x00\x00\x10LOCTAG-'
+b'10000\xDD\x0C\x54\x4A\x55\x00\x00\x00\x00\x00'
 b'\x00\x00\x00\x00')
 
 ta11b_dat = xor_bytes(tx11b_pkt, rx11b_pkt)[start_pos:]
@@ -59,8 +59,8 @@ print('%s = CRC32(D)+CRC32(0) = %s ^ %s'% (
         format_bins_to_hex(dx_crc32_0, msb_first=False, nol=32)
     ))
 
-print('rx-cal:', format_bins_to_hex(rx_crc32_cal, msb_first=False,nol=32))
+print('rx computed crc:', format_bins_to_hex(rx_crc32_cal, msb_first=False,nol=32))
 
-print(format_bins(dx_0_with_crc))
-print(format_bins(dx_1_with_crc))
-print(format_bins(dx_2_with_crc))
+print('dx0:\n'+format_bins(dx_0_with_crc))
+print('dx1:\n'+format_bins(dx_1_with_crc))
+print('dx2:\n'+format_bins(dx_2_with_crc))
