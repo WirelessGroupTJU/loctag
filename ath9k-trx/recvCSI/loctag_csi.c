@@ -139,9 +139,9 @@ int main(int argc, char* argv[])
             crcErr = csi_status->noise;
             crcFlag = crcErr? 'C': '*';
 
-            if (csi_status->rate > 0x80) {
+            if (csi_status->rate >= 0x80) {
                 if (QUITE) {
-                    putchar('n');
+                    putchar('n'); fflush(stdout);
                 } else {
                     printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d  csi: %dx%dx%d\n", \
                         total_msg_cnt, crcFlag, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
                 if (mpdu[0] == 0x80) { //beacon
                     tag_rss = (unsigned int)mpdu[56]*0.333 - 65.4;
                     if (QUITE) {
-                        putchar('b');
+                        putchar('b'); fflush(stdout);
                     } else {
                         printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d  tag_rss: %5.1f %.*s\n", \
                             total_msg_cnt, crcFlag, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
                 }
             } else {
                 if (QUITE) {
-                    putchar('u');
+                    putchar('u'); fflush(stdout);
                 } else {
                     printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d\n", \
                         total_msg_cnt, crcFlag, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
