@@ -240,7 +240,7 @@ module loctag # (
           mod_enable <= 0;
           rom_out_enable <= 0;
           crc32_out_enable <= 0;
-          rom_addr <= B_ADDR_START+6'd22;
+          rom_addr <= B_ADDR_START+6'd52;
           bit_addr <= 0;
           if (adc_eoc)
             rom[rom_addr] <= adc_data;
@@ -444,7 +444,7 @@ module loctag # (
         //   mod_enable <= 0;
         //   rom_out_enable <= 0;
         //   crc32_out_enable <= 0;
-        //   rom_addr <= B_ADDR_START+6'd28;
+        //   rom_addr <= B_ADDR_START+6'd54;
         //   bit_addr <= 0;
         //   if (adc_eoc)
         //     rom[rom_addr] <= adc_data;
