@@ -22,8 +22,8 @@ module loctag_3_1_2_03 (
   // output pin_mio_2,
   // output pin_mio_3,
   // output pin_mio_4,
-  // output pin_mio_7,
-  // output pin_mio_8,
+  output pin_mio_7,
+  output pin_mio_8,
   // output pin_mio_9,
   input pin_mio_10
   );
@@ -41,13 +41,14 @@ module loctag_3_1_2_03 (
   );
 
   wire trig = ~pin_trig;
+  assign pin_mio_7 = trig;
   wire led;
   
   loctag  # (
     .TAG_ID("LOCTAG-10003"),
     .MAC_SEED(16'h7654),
     .TRIG_DELAY_IN_US(2),
-    .TRIG_DELAY_IN_20NS_NEG(25)
+    .TRIG_DELAY_IN_20NS_NEG(35)
   ) loctag_inst (
     // 50MHz clock input
     .clk(clk),
@@ -62,6 +63,7 @@ module loctag_3_1_2_03 (
 
     .mode(mode),
     .mac_q(mac_q),
+    .smoothed_trig(pin_mio_8),
     .led(led)
   );
 

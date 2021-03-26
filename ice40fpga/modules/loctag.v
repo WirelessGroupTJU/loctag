@@ -6,7 +6,7 @@ module loctag # (
     parameter [15:0] MAC_SEED = 16'h4C06,
     // 触发延迟补偿，提前 (TRIG_DELAY_IN_US - 0.02*TRIG_DELAY_IN_20NS)微秒
     parameter integer TRIG_DELAY_IN_US = 2,  // 提前多少us开始调制过程，以补偿TRIG检测延迟
-    parameter integer TRIG_DELAY_IN_20NS_NEG = 25  // 在us级补偿的基础上延迟多少个20ns开始调制，取值范围为1到48
+    parameter integer TRIG_DELAY_IN_20NS_NEG = 35  // 在us级补偿的基础上延迟多少个20ns开始调制，取值范围为1到48
   )
   (
   // 50MHz clock input
@@ -22,6 +22,7 @@ module loctag # (
 
   input  [1:0] mode,
   input  [1:0] mac_q,
+  output smoothed_trig,
   output led
   );
 
@@ -29,8 +30,9 @@ module loctag # (
   assign lt5534_en = 1'b1;
   assign led = (mode==2'b11)? 1'b1: (mode==2'b00)? 1'b0: trig;
   // smoothed_trig signal filter
-  reg  [7:0] trig_filter = 0;
-  wire smoothed_trig = |trig_filter;
+  localparam TRIG_FILTER_LEN = 28;
+  reg  [TRIG_FILTER_LEN-1:0] trig_filter = 0;
+  assign smoothed_trig = |trig_filter;
   ///////////////// 参数定义 /////////////  
 
   // 定时参数
@@ -39,8 +41,8 @@ module loctag # (
   // summary: GET_RSS<3> + DELAY_COMPENSATION<9> + ZERO_MOD<(192-3-9)+(4*8)=212> + DATA_MOD<(60*8)>+FILL_FCS<32> = 704+32 = 736us
   localparam T_B_GET_RSS = 3;
   localparam T_B_DELAY_COMPENSATION = 9; // 检测延迟
-  localparam T_B_ZERO_MOD = 212;
-  localparam T_B_DATA_MOD = 480;
+  localparam T_B_ZERO_MOD = 452;
+  localparam T_B_DATA_MOD = 240;
   localparam T_B_FILL_FCS = 32;
   localparam [19:0] T_B_PACKET_DURATION = (736-TRIG_DELAY_IN_US)*50 + TRIG_DELAY_IN_20NS_NEG;
 
@@ -240,7 +242,7 @@ module loctag # (
           mod_enable <= 0;
           rom_out_enable <= 0;
           crc32_out_enable <= 0;
-          rom_addr <= B_ADDR_START+6'd52;
+          rom_addr <= B_ADDR_START+6'd22;
           bit_addr <= 0;
           if (adc_eoc)
             rom[rom_addr] <= adc_data;
@@ -444,7 +446,7 @@ module loctag # (
         //   mod_enable <= 0;
         //   rom_out_enable <= 0;
         //   crc32_out_enable <= 0;
-        //   rom_addr <= B_ADDR_START+6'd54;
+        //   rom_addr <= B_ADDR_START+6'd24;
         //   bit_addr <= 0;
         //   if (adc_eoc)
         //     rom[rom_addr] <= adc_data;
@@ -498,7 +500,7 @@ module loctag # (
 	always @(posedge clk_25mhz) clk_12mhz = !clk_12mhz;
 
   // trig_filter
-  always @(posedge clk_12mhz) trig_filter[7:0] = {trig_filter[6:0], trig};
+  always @(posedge clk_12mhz) trig_filter[TRIG_FILTER_LEN-1:0] = {trig_filter[TRIG_FILTER_LEN-2:0], trig};
 
   adc7478 adc7478_inst (
     .clk_in(clk_12mhz),
@@ -541,14 +543,14 @@ module loctag # (
     /////////////// 11b data section ////////////////
     // tag_data = tx_data ^ expected_data
 
-    for (i = 0; i<34; i=i+1) begin
+    for (i = 0; i<4; i=i+1) begin
         rom[i] <= 8'h00;
     end
     // 初始化标签ID，标签ID共12字节
     for (i = 0; i<12; i=i+1) begin
-        rom[34+12-i-1] <= SSID_PADDING[i*8+:8] ^ TAG_ID[i*8+:8];
+        rom[4+12-i-1] <= SSID_PADDING[i*8+:8] ^ TAG_ID[i*8+:8];
     end
-    for (i = 34+12; i<ROM_SIZE; i=i+1) begin
+    for (i = 4+12; i<ROM_SIZE; i=i+1) begin
         rom[i] <= 8'h00;
     end
     /////////////// 11n data section ////////////////

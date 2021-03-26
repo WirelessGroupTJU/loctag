@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
                 if (mpdu[0] == 0x80) { //beacon
                     tag_rss = (unsigned int)mpdu[56]*0.333 - 65.4;
                     if (QUITE) {
-                        putchar('b'); fflush(stdout);
+                        putchar(mpdu[38+mpdu[37]-1]); fflush(stdout);
                     } else {
                         printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d  tag_rss: %5.1f %.*s\n", \
                             total_msg_cnt, crcFlag, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
