@@ -22,7 +22,7 @@ radiotap_bga = (b'\x00\x00' b'\x0d\x00' b'\x04\x80\x02\x00' b'\x02' b'\x00\x00\x
 # (15,TX_FLAGS,2), (17,DATA_RETRIES,1), (19,MCS,3(known,flags,mcs))
 radiotap_ht  = (b'\x00\x00' b'\x0e\x00' b'\x00\x80\x0a\x00' b'\x00\x00' b'\x00' b'\x07\x00\x05')
 
-SSID = '000000-0000-0000'
+SSID = '000000-00000'
 
 mpdu_header = Dot11(type=0, subtype=8, addr1=bc_mac, addr2=tx_mac, addr3=bssid)
 
@@ -31,7 +31,7 @@ essid = Dot11Elt(ID='SSID',info=SSID, len=len(SSID))
 vendor_data = Dot11EltVendorSpecific(len=None, oui=0x544a55, info=(b'\x00'+b'\x00'*8))
 
 frame = radiotap_bga/mpdu_header/beacon/essid/vendor_data
-
+hexdump(raw(radiotap_bga))
 hexdump(raw(mpdu_header/beacon/essid/vendor_data))
 
 try:

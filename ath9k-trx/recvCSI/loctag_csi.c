@@ -29,6 +29,7 @@
 #include "csi_fun.h"
 
 #define BUFSIZE 4096
+const int QUITE = 1;
 
 int quit;
 unsigned char buf_addr[BUFSIZE];
@@ -139,23 +140,35 @@ int main(int argc, char* argv[])
             crcFlag = crcErr? 'C': '*';
 
             if (csi_status->rate > 0x80) {
-                printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d  csi: %dx%dx%d\n", \
-                    total_msg_cnt, crcFlag, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
-                    csi_status->payload_len, \
-                    csi_status->nr, csi_status->nc, csi_status->num_tones );
-            } else if (csi_status->rate == 0x1b) { //11b
-                if (mpdu[0] == 0x80) { //beacon
-                    tag_rss = (unsigned int)mpdu[60]*0.333 - 65.4;
-                    printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d  tag_rss: %5.1f %.*s\n", \
+                if (QUITE) {
+                    putchar('n');
+                } else {
+                    printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d  csi: %dx%dx%d\n", \
                         total_msg_cnt, crcFlag, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
                         csi_status->payload_len, \
-                        tag_rss, mpdu[37], &mpdu[38] );
+                        csi_status->nr, csi_status->nc, csi_status->num_tones );
+                }                
+            } else if (csi_status->rate == 0x1b) { //11b
+                if (mpdu[0] == 0x80) { //beacon
+                    tag_rss = (unsigned int)mpdu[56]*0.333 - 65.4;
+                    if (QUITE) {
+                        putchar('b');
+                    } else {
+                        printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d  tag_rss: %5.1f %.*s\n", \
+                            total_msg_cnt, crcFlag, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
+                            csi_status->payload_len, \
+                            tag_rss, mpdu[37], &mpdu[38] );
+                    }
                 }
             } else {
-                printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d\n", \
-                    total_msg_cnt, crcFlag, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
-                    csi_status->payload_len \
-                    );
+                if (QUITE) {
+                    putchar('u');
+                } else {
+                    printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d\n", \
+                        total_msg_cnt, crcFlag, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
+                        csi_status->payload_len \
+                        );
+                }
             }
             /* log the received data for off-line processing */
             if (log_flag){
