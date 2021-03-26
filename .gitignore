@@ -1,6 +1,7 @@
 reference/
 ath9k-trx/dataset/
-ath9k-trx/recvCSI/recv_csi
+ath9k-trx/recvCSI/loctag_csi
+ath9k-trx/recvCSI/loctag_inject
 *.csi
 
 # Prerequisites
