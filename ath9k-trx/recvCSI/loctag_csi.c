@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
             return 0;
         }   
     }
-    if (argc > =3){
+    if (argc >= 3){
         printf(" Too many input arguments !\n");
         return 0;
     }
