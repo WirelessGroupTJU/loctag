@@ -2,7 +2,7 @@
  * =====================================================================================
  *       Filename:  main.c
  *
- *    Description:  Here is an example for receiving CSI matrix 
+ *    Description:  Here is an example for receiving CSI matrix
  *                  Basic CSi procesing fucntion is also implemented and called
  *                  Check csi_fun.c for detail of the processing function
  *        Version:  1.0
@@ -10,7 +10,7 @@
  *         Author:  Yaxiong Xie
  *         Email :  <xieyaxiongfly@gmail.com>
  *   Organization:  WANDS group @ Nanyang Technological University
- *   
+ *
  *   Copyright (c)  WANDS group @ Nanyang Technological University
  * =====================================================================================
  */
@@ -59,7 +59,8 @@ int main(int argc, char* argv[])
     int txpower;
     float  tag_rss;
     char   crcFlag;
-    
+    char   rxMark;
+
     log_flag = 1;
     txpower = 0x3f;
     csi_status = (csi_struct*)malloc(sizeof(csi_struct));
@@ -80,7 +81,7 @@ int main(int argc, char* argv[])
             printf("Fail to open <output_file>, are you root?\n");
             fclose(fp);
             return 0;
-        }   
+        }
     }
     if (argc >= 3){
         printf(" Too many input arguments !\n");
@@ -92,12 +93,12 @@ int main(int argc, char* argv[])
         perror("Failed to open the device...");
         return errno;
     }
-    
+
     printf("#Receiving data! Press Ctrl+C to quit!\n");
 
     quit = 0;
     total_msg_cnt = 0;
-    
+
     while(1){
         if (1 == quit){
             return 0;
@@ -114,18 +115,18 @@ int main(int argc, char* argv[])
             /* fill the status struct with information about the rx packet */
             record_status(buf_addr, cnt, csi_status);
             mpdu = buf_addr + 23 + csi_status->csi_len + 2;
-            /* 
+            /*
              * fill the payload buffer with the payload
              * fill the CSI matrix with the extracted CSI value
              */
-            // record_csi_payload(buf_addr, csi_status, data_buf, csi_matrix); 
-            
-            /* Till now, we store the packet status in the struct csi_status 
+            // record_csi_payload(buf_addr, csi_status, data_buf, csi_matrix);
+
+            /* Till now, we store the packet status in the struct csi_status
              * store the packet payload in the data buffer
              * store the csi matrix in the csi buffer
-             * with all those data, we can build our own processing function! 
+             * with all those data, we can build our own processing function!
              */
-            // porcess_csi(data_buf, csi_status, csi_matrix);   
+            // porcess_csi(data_buf, csi_status, csi_matrix);
             rssi = csi_status->rssi - 95;
             rssi_0 = csi_status->rssi_0 - 95;
             rssi_1 = csi_status->rssi_1 - 95;
@@ -141,12 +142,13 @@ int main(int argc, char* argv[])
                         total_msg_cnt, crcFlag, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \
                         csi_status->payload_len, \
                         csi_status->nr, csi_status->nc, csi_status->num_tones );
-                }                
+                }
             } else if (csi_status->rate == 0x1b) { //11b
                 if (mpdu[0] == 0x80 || mpdu[0] == 0x08) { // beacon or data
                     tag_rss = (unsigned int)mpdu[56]*0.333 - 65.4;
                     if (QUITE) {
-                        putchar(mpdu[38+mpdu[37]-1]); fflush(stdout);
+                        rxMark = mpdu[38+11];
++                       putchar(rxMark>='0'&&rxMark<='3'? rxMark: '.'); fflush(stdout);
                     } else {
                         printf("%04d %c rate: 0x%02x, rssi: %d(%d|%d|%d), len: %d  tag_rss: %5.1f %.*s\n", \
                             total_msg_cnt, crcFlag, csi_status->rate, rssi, rssi_0, rssi_1, rssi_2, \

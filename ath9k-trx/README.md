@@ -1,5 +1,31 @@
 # ATH9K发包收包
 
+## 运行发包收包示例
+
+只需使用`recvCSI`目录下的程序，其他目录为调试收包发包所使用的程序，仅供参考
+
+发送端：
+
+```bash
+start_monitor.sh 11  # 打开monitor模式，并设置信道为11
+# 方式1：手动发包
+sudo loctag_inject 1200 6 500  # 发送1200个"11b数据帧+11n数据帧"帧对，每个帧对之间间隔500us
+# 方式2：自动循环发包
+./loctag_inject_x.sh  # 每6秒自动执行一次"loctag_inject 1200 6 500"
+```
+
+接收端：
+
+```bash
+sudo python driverUtil.py  # 为csi驱动设置过滤选项，仅处理发送端为指定mac地址的包
+# 方式1：手动收数
+start_monitor.sh 11  # 打开monitor模式，并设置信道为11
+sudo loctag_csi xxxx.csi  # 记录csi数据到文件xxxx.csi
+# 方式2：双信道简化操作
+./loctag_csi_x.sh xxx a # 在11信道记录csi数据，并保存到文件xxxxa
+./loctag_csi_x.sh xxx z # 在1信道记录csi数据，并保存到文件xxxxz
+```
+
 ## 使用配置
 
 ### 硬件配置
