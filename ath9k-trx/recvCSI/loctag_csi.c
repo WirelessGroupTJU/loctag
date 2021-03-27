@@ -29,7 +29,7 @@
 #include "csi_fun.h"
 
 #define BUFSIZE 4096
-const int QUITE = 1;
+int QUITE = 0;
 
 int quit;
 unsigned char buf_addr[BUFSIZE];
@@ -74,6 +74,7 @@ int main(int argc, char* argv[])
         printf("/**************************************/\n");
     }
     if (2 == argc){
+        QUITE = 1;
         fp = fopen(argv[1],"w");
         if (!fp){
             printf("Fail to open <output_file>, are you root?\n");
@@ -142,7 +143,7 @@ int main(int argc, char* argv[])
                         csi_status->nr, csi_status->nc, csi_status->num_tones );
                 }                
             } else if (csi_status->rate == 0x1b) { //11b
-                if (mpdu[0] == 0x80) { //beacon
+                if (mpdu[0] == 0x80 || mpdu[0] == 0x08) { // beacon or data
                     tag_rss = (unsigned int)mpdu[56]*0.333 - 65.4;
                     if (QUITE) {
                         putchar(mpdu[38+mpdu[37]-1]); fflush(stdout);

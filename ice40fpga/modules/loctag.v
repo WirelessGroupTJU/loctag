@@ -46,7 +46,7 @@ module loctag # (
   localparam T_B_FILL_FCS = 32;
   localparam [19:0] T_B_PACKET_DURATION = (736-TRIG_DELAY_IN_US)*50 + TRIG_DELAY_IN_20NS_NEG;
 
-  localparam T_WAIT_FOR_11N_TIMEOUT = 22;  // 以微秒记
+  localparam T_WAIT_FOR_11N_TIMEOUT = 2100;  // 以微秒记
   // 11n. see TableIEEE Std 802.11-2016, Figure 19-4
   // for MF, Preamble>=10sym(20us); for GF, Preamble>=6sym(24us)
   localparam T_N_GET_RSS = 3;

@@ -20,13 +20,18 @@
 
 const char *ifname = "wlan0";
 
-const uint8_t loctag_b_pkt[MAX_FRAME_SIZE] = "\x00\x00\x0D\x00\x04\x80\x02\x00\x02\x00\x00\x00\x00" \
+const uint8_t loctag_b_beacon_pkt[MAX_FRAME_SIZE] = "\x00\x00\x0D\x00\x04\x80\x02\x00\x02\x00\x00\x00\x00" \
         "\x80\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xB4\xEE\xB4\xB7\x0B\x3C" \
         "\xB4\xEE\xB4\xB7\x0B\x3C\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
         "\x64\x00\x00\x00\x00\x0C\x30\x30\x30\x30\x30\x30\x2D\x30\x30\x30" \
         "\x30\x30\xDD\x0C\x54\x4A\x55\x00\x00\x00\x00\x00\x00\x00\x00\x00";
+const uint8_t loctag_b_data_pkt[MAX_FRAME_SIZE] = "\x00\x00\x0D\x00\x04\x80\x02\x00\x02\x00\x00\x00\x00" \
+        "\x08\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xB4\xEE\xB4\xB7\x0B\x3C" \
+        "\xB4\xEE\xB4\xB7\x0B\x3C\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
+        "\x64\x00\x00\x00\x00\x0C\x30\x30\x30\x30\x30\x30\x2D\x30\x30\x30" \
+        "\x30\x30\xDD\x0C\x54\x4A\x55\x00\x00\x00\x00\x00\x00\x00\x00\x00";
 const int32_t loctag_b_pkt_size = 77;
-const uint8_t loctag_n_pkt[MAX_FRAME_SIZE] = "\x00\x00\x0E\x00\x00\x80\x0A\x00\x00\x00\x00\x07\x00\x00" \
+const uint8_t loctag_n_data_pkt[MAX_FRAME_SIZE] = "\x00\x00\x0E\x00\x00\x80\x0A\x00\x00\x00\x00\x07\x00\x00" \
         "\x08\x00\x00\x00\xB4\xEE\xB4\xB7\x08\xF4\xB4\xEE\xB4\xB7\x0B\x3C" \
         "\xB4\xEE\xB4\xB7\x0B\x3C\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
         "\x00\x00\x00\x00";
@@ -47,17 +52,17 @@ int32_t main(int argc, char *argv[])
 
     /* Parse arguments */
 	if (argc > 4) {
-		printf("Usage: random_packets <number> <mode: 0=11b, 1=11n, 2=11b+11n> <delay in us>\n");
+		printf("Usage: random_packets <number> <mode: 1=11b, 2=11b_d, 4=11n, 5=11b+11n, 6=11b_d+11n> <delay in us>\n");
 		return 1;
 	}
 	if (argc < 4 || (1 != sscanf(argv[3], "%u", &delay_us))) {
 		delay_us = 0;
 	}
 	if (argc < 3 || (1 != sscanf(argv[2], "%u", &mode))) {
-		mode = 2;
-		printf("Usage: random_packets <number> <mode: 0=11b, 1=11n, 2=11b+11n> <delay in us>\n");
-	} else if (mode > 2) {
-		printf("Usage: random_packets <number> <mode: 0=11b, 1=11n, 2=11b+11n> <delay in us>\n");
+		mode = 1;
+		printf("Usage: random_packets <number> <mode: 1=11b, 2=11b_d, 4=11n, 5=11b+11n, 6=11b_d+11n> <delay in us>\n");
+	} else if (mode > 6) {
+		printf("Usage: random_packets <number> <mode: 1=11b, 2=11b_d, 4=11n, 5=11b+11n, 6=11b_d+11n> <delay in us>\n");
 		return 1;
 	}
 	if (argc < 2 || (1 != sscanf(argv[1], "%u", &num_packets)))
@@ -69,7 +74,7 @@ int32_t main(int argc, char *argv[])
 		/* Get start time */
 		clock_gettime(CLOCK_MONOTONIC, &start);
 	}
-    for (i = 0; i < num_packets; ++i) {
+    for (i = 0; num_packets==0 || i < num_packets; ++i) {
 		if (delay_us) {
 			clock_gettime(CLOCK_MONOTONIC, &now);
 			diff = (now.tv_sec - start.tv_sec) * 1000000 +
@@ -78,15 +83,22 @@ int32_t main(int argc, char *argv[])
 			if (diff > 0 && diff < delay_us)
 				usleep(diff);
 		}
-        if (mode==0 || mode==2) {
-            t_size = write(t_socket, loctag_b_pkt, loctag_b_pkt_size);
+        if (mode&0x01) {
+            t_size = write(t_socket, loctag_b_beacon_pkt, loctag_b_pkt_size);
             if(t_size<0) {
                 perror("<main> write(b) failed!");
                 exit(1);
             }
         }
-        if (mode==1 || mode==2) {
-            t_size = write(t_socket, loctag_n_pkt, loctag_n_pkt_size);
+        if (mode&0x02) {
+            t_size = write(t_socket, loctag_b_data_pkt, loctag_b_pkt_size);
+            if(t_size<0) {
+                perror("<main> write(b_d) failed!");
+                exit(1);
+            }
+        }
+        if (mode&0x04) {
+            t_size = write(t_socket, loctag_n_data_pkt, loctag_n_pkt_size);
             if(t_size<0) {
                 perror("<main> write(n) failed!");
                 exit(1);
