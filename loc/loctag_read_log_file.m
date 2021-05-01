@@ -14,7 +14,7 @@
 %% =====================================================================================
 %%
 
-function ret = read_log_file(filename, optarg)
+function ret = loctag_read_log_file(filename, optarg)
 arguments % Matlab R2019b or later
     filename {mustBeFile};
     optarg.rssi_base {mustBeReal, mustBeScalarOrEmpty} = -95;
@@ -32,7 +32,7 @@ if status ~= 0
     error('Error %d seeking: %s', errno, msg);    
 end
 len = ftell(f);
-fprintf('file length is:%d\n',len);
+fprintf('file %s length is:%d\n',filename, len);
 
 status = fseek(f, 0, 'bof');
 if status ~= 0
@@ -57,87 +57,67 @@ while cur < (len - 4)
     end
     
     timestamp = fread(f, 1, 'uint64', 0, [endian_format '.l64']);
-	csi_matrix.timestamp = timestamp;
+	pkt_record.timestamp = timestamp;
 	cur = cur + 8;
-	printf_i('timestamp is %d\n',timestamp);
 
     csi_len = fread(f, 1, 'uint16', 0, endian_format);
-	csi_matrix.csi_len = csi_len;
+% 	pkt_record.csi_len = csi_len;
 	cur = cur + 2;
-    printf_i('csi_len is %d\n',csi_len);
 
     tx_channel = fread(f, 1, 'uint16', 0, endian_format);
-	csi_matrix.channel = tx_channel;
+	pkt_record.channel = tx_channel;
 	cur = cur + 2;
-    printf_i('channel is %d\n',tx_channel);
    
     err_info = fread(f, 1,'uint8=>int');
-    csi_matrix.err_info = err_info;
-    printf_i('err_info is %d\n',err_info);
+    pkt_record.err_info = err_info;
     cur = cur + 1;
     
     noise_floor = fread(f, 1, 'uint8=>int');
-	csi_matrix.noise_floor = noise_floor;
+	pkt_record.crc_err = noise_floor;
 	cur = cur + 1;
-    printf_i('noise_floor is %d\n',noise_floor);
     
-    Rate = fread(f, 1, 'uint8=>int');
-	csi_matrix.Rate = Rate;
-	cur = cur + 1;
-	printf_i('rate is %x\n',Rate);
-    
+    rate = fread(f, 1, 'uint8=>int'); %11b 1Mbps:0x1b, 11n mcs0: 0x80;
+	pkt_record.rate = rate;
+	cur = cur + 1; 
     
     bandWidth = fread(f, 1, 'uint8=>int');
-	csi_matrix.bandWidth = bandWidth;
+% 	pkt_record.bandWidth = bandWidth;
 	cur = cur + 1;
-	printf_i('bandWidth is %d\n',bandWidth);
     
     num_tones = fread(f, 1, 'uint8=>int');
-	csi_matrix.num_tones = num_tones;
+	pkt_record.num_tones = num_tones;
 	cur = cur + 1;
-	printf_i('num_tones is %d  ',num_tones);
 
 	nr = fread(f, 1, 'uint8=>int');
-	csi_matrix.nr = nr;
+	pkt_record.nr = nr;
 	cur = cur + 1;
-	printf_i('nr is %d  ',nr);
 
 	nc = fread(f, 1, 'uint8=>int');
-	csi_matrix.nc = nc;
+	pkt_record.nc = nc;
 	cur = cur + 1;
-	printf_i('nc is %d\n',nc);
 	
 	rssi = fread(f, 1, 'uint8=>int') + optarg.rssi_base; % convert rssi to dbm, the same below
-	csi_matrix.rssi = rssi;
+	pkt_record.rss = int32(rssi);
 	cur = cur + 1;
-	printf_i('rssi is %d\n',rssi);
 
 	rssi1 = fread(f, 1, 'uint8=>int') + optarg.rssi_base;
-	csi_matrix.rssi1 = rssi1;
+	%pkt_record.rssi1 = rssi1;
 	cur = cur + 1;
-	printf_i('rssi1 is %d\n',rssi1);
+	%printf_i('rssi1 is %d\n',rssi1);
 
 	rssi2 = fread(f, 1, 'uint8=>int') + optarg.rssi_base;
-	csi_matrix.rssi2 = rssi2;
+	%pkt_record.rssi2 = rssi2;
 	cur = cur + 1;
-	printf_i('rssi2 is %d\n',rssi2);
+	%printf_i('rssi2 is %d\n',rssi2);
 
 	rssi3 = fread(f, 1, 'uint8=>int') + optarg.rssi_base;
-	csi_matrix.rssi3 = rssi3;
+	%pkt_record.rssi3 = rssi3;
 	cur = cur + 1;
-	printf_i('rssi3 is %d\n',rssi3);
-    
-%     not_sounding = fread(f, 1, 'uint8=>int');
-%     cur = cur + 1;
-%     hwUpload = fread(f, 1, 'uint8=>int');
-%     cur = cur + 1;
-%     hwUpload_valid = fread(f, 1, 'uint8=>int');
-%     cur = cur + 1;
-%     hwUpload_type = fread(f, 1, 'uint8=>int');
-%     cur = cur + 1;
+	%printf_i('rssi3 is %d\n',rssi3);
+    pkt_record.ant_rss=int32([rssi1, rssi2, rssi3]);
     
     payload_len = fread(f, 1, 'uint16', 0, endian_format);
-	csi_matrix.payload_len = payload_len;
+	pkt_record.payload_len = payload_len;
 	cur = cur + 2;
     printf_i('payload length: %d\n',payload_len);	
     
@@ -145,26 +125,50 @@ while cur < (len - 4)
         csi_buf = fread(f, csi_len, 'uint8=>uint8');
 	    csi = read_csi(csi_buf, nr, nc, num_tones);
     	cur = cur + csi_len;
-	    csi_matrix.csi = csi;
+	    pkt_record.csi = []; %csi;
     else
-        csi_matrix.csi = 0;
+        pkt_record.csi = [];
     end       
     
     if payload_len > 0
-        data_buf = fread(f, payload_len, 'uint8=>uint8');	    
+        mpdu = fread(f, payload_len, 'uint8=>uint8');	    
     	cur = cur + payload_len;
-	    csi_matrix.payload = data_buf;
+        if rate == 0x1b
+            pkt_record.payload = mpdu;
+            pkt_record.txMac = sprintf('%02x:%02x:%02x:%02x:%02x:%02x', mpdu(11),mpdu(12),mpdu(13),mpdu(14),mpdu(15),mpdu(16));
+            id_str = char(mpdu(39:50))';
+            if strncmp(id_str, 'LOCTAG-10000', 11) && any(id_str(end)==['1', '2', '3'])
+                pkt_record.id = uint8(id_str(end))-uint8('0');%mpdu(38+11+1);
+            else
+                pkt_record.id = uint8(0);
+            end
+            adc = mpdu(56+1);
+            if adc>80 || adc==0
+                pkt_record.tag_rss = double(adc)*0.333-65.4;
+            else
+                pkt_record.tag_rss = double(128+bitsrl(adc, 1))*0.333-65.4;
+            end
+        elseif rate==0x80
+            pkt_record.payload = mpdu;
+            pkt_record.txMac = sprintf('%02x:%02x:%02x:%02x:%02x:%02x', mpdu(11),mpdu(12),mpdu(13),mpdu(14),mpdu(15),mpdu(16));
+            pkt_record.id =  uint8(0);
+            pkt_record.tag_rss = double(0);
+        else
+            pkt_record = []; %清空当前记录
+            fprintf('W: rate 0x%02x unused in packet %d\n', rate, count);
+            continue
+        end
     else
-        csi_matrix.payload = 0;
+        pkt_record = []; %清空当前记录
+        fprintf('W: payload_len < 0 in packet %d\n', count);
+        continue
     end
-    
-    
     
     if (cur + 420 > len)
         break;
     end
     count = count + 1;
-    ret{count} = csi_matrix;
+    ret{count} = pkt_record;
 end
 if (count >1)
 	ret = ret(1:(count-1));
