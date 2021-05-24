@@ -30,15 +30,15 @@ def crc16(bins_input):
     # return regs
     return bin((regs^xor_val)&0xffff)[2:].zfill(16)
 
-def crc32(bins_input, isflip=False):
+def crc32(bins_input, init_state=0xffffffff, out_xor_val=0xffffffff, isflip=False):
     """Computing the CRC-32 value of input bit stream given by bin string.
     Args:
         bins_input: Bin string which the leftmost bit shall be processed first.
     Return:
         A 32-bit binstring result which the leftmost bit shall be transmitted first.
     """
-    regs = 0xffffffff
-    xor_val = 0xffffffff
+    regs = init_state
+    xor_val = out_xor_val
     poly = 0x04c11db7
     # print('X', bin(poly)[2:].zfill(32))
     for i in range(len(bins_input)):

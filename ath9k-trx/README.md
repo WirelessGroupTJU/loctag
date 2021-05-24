@@ -30,8 +30,8 @@ sudo loctag_csi xxxx.csi  # 记录csi数据到文件xxxx.csi
 
 ### 硬件配置
 
-- 发包：Dell D630笔记本，配AR9580网卡，单天线
-- 收包：Dell D630笔记本，配AR9580网卡，3天线
+- 发包：Dell D630笔记本，配AR9580网卡，单天线，MAC地址：b4:ee:b4:b7:0b:3c
+- 收包：Dell D630笔记本，配AR9580网卡，3天线，MAC地址：b4:ee:b4:b7:08:f4
 
 ### 软件配置
 
@@ -50,7 +50,7 @@ VERSION_ID="12.04"
 Linux csi-pc 4.1.10+ #1 SMP Sat Aug 22 17:49:51 CST 2020 x86_64 x86_64 x86_64 GNU/Linux
 ```
 
-- 修改过的[Atheros-CSI-Tool](https://github.com/holyens/Atheros-CSI-Tool)和[Atheros-CSI-Tool-UserSpace-APP](https://github.com/holyens/loctag-Atheros-CSI-Tool-UserSpace-APP)，修改过的源码位于各个项目的loctag分支
+- 修改过的[Atheros-CSI-Tool](https://github.com/holyens/Atheros-CSI-Tool)，修改过的源码位于各个项目的loctag分支
 
 ## 应用修改过的Atheros-CSI-Tool
 
@@ -100,7 +100,7 @@ sudo dmesg --clear
 sudo dmesg | grep 'loctag\|debug_csi'
 ```
 
-## 使用修改过的Atheros-CSI-Tool-UserSpace-APP
+## 使用修改过的Atheros-CSI-Tool-UserSpace-APP（本项目暂不需要）
 
 - 下载修改过的Atheros-CSI-Tool-UserSpace-APP
 

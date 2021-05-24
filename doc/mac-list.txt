@@ -1,5 +1,0 @@
-b4:ee:b4:b7:0b:3c       Tx
-b4:ee:b4:b7:08:f4       Rx
-
-
-ether host b4:ee:b4:b7:0b:3c or ether host b4:ee:b4:b7:08:f4
