@@ -18,6 +18,7 @@ function ret = loctag_read_log_file(filename, optarg)
 arguments % Matlab R2019b or later
     filename {mustBeFile};
     optarg.rssi_base {mustBeReal, mustBeScalarOrEmpty} = -95;
+    optarg.filter_crc_err {mustBeReal, mustBeScalarOrEmpty} = 1;
 end
 
 f = fopen(filename, 'rb');
@@ -125,7 +126,7 @@ while cur < (len - 4)
         csi_buf = fread(f, csi_len, 'uint8=>uint8');
 	    csi = read_csi(csi_buf, nr, nc, num_tones);
     	cur = cur + csi_len;
-	    pkt_record.csi = []; %csi;
+	    pkt_record.csi = csi; %csi;
     else
         pkt_record.csi = [];
     end       
@@ -134,7 +135,7 @@ while cur < (len - 4)
         mpdu = fread(f, payload_len, 'uint8=>uint8');	    
     	cur = cur + payload_len;
         if rate == 0x1b
-            pkt_record.payload = mpdu;
+%           pkt_record.payload = mpdu;
             pkt_record.txMac = sprintf('%02x:%02x:%02x:%02x:%02x:%02x', mpdu(11),mpdu(12),mpdu(13),mpdu(14),mpdu(15),mpdu(16));
             id_str = char(mpdu(39:50))';
             if strncmp(id_str, 'LOCTAG-10000', 11) && any(id_str(end)==['1', '2', '3'])
@@ -149,7 +150,8 @@ while cur < (len - 4)
                 pkt_record.tag_rss = double(128+bitsrl(adc, 1))*0.333-65.4;
             end
         elseif rate==0x80
-            pkt_record.payload = mpdu;
+%           pkt_record.payload = mpdu;
+%           pkt_record.crc_err = int32(crc32(mpdu(1:end-4))~=typecast(mpdu(end-3:end), 'uint32'));
             pkt_record.txMac = sprintf('%02x:%02x:%02x:%02x:%02x:%02x', mpdu(11),mpdu(12),mpdu(13),mpdu(14),mpdu(15),mpdu(16));
             pkt_record.id =  uint8(0);
             pkt_record.tag_rss = double(0);
@@ -163,6 +165,10 @@ while cur < (len - 4)
         fprintf('W: payload_len < 0 in packet %d\n', count);
         continue
     end
+%     if pkt_record.crc_err~=0 && optarg.filter_crc_err~=0
+%         pkt_record = [];
+%         continue;
+%     end
     
     if (cur + 420 > len)
         break;

@@ -1,161 +1,90 @@
-% 从数据集生成指纹
 
-clear;
-load('file_list.mat');
-dataset_path = 'f:/dataset0327/';
+function loctag_rss_loc_dataset_gen(dataset_path)
+% 训练集点与测试集点的文件名与坐标需要完全对应
+% descFile = fullfile(dataset_path, 'settings.json');
+% desc = jsondecode(fileread(descFile));
+coordFile = fullfile(dataset_path, 'coordinates.xlsx');
+T = readtable(coordFile, 'ReadVariableNames',true);
+% filter
+T = T(T.flag==0, :); % flag 0:正常采样点; 1-3: Tag所在点
+file_no_str = T.file_no;
+file_no = cellfun(@str2num, file_no_str);
+coord = [T.x T.y];
+% 获得路径
+[path, ~, ~] = fileparts(coordFile);
 
-pkt_count_valid = zeros(max(file_no_list), 4); % (tag1, tag2, tag3, tx)
-pkt_count_total = zeros(max(file_no_list), 4); % (tx11b, tx11n, tag11b, tag11n)
-
-% 初始化一个空特征结构体
-null_feat.txMac = '00:00:00:00:00:00';
-null_feat.id = 0;
-null_feat.rss = -100;
-null_feat.ant_rss = [-100 -100 -100];
-null_feat.tag_rss = double(-100);
-null_feat.csi = [];
-
-%% 训练点
-for m=1:max(file_no_list)
-    file_path_prefix = sprintf('%s%03d', dataset_path, m);
-    if ~isfile(strcat(file_path_prefix,'a'))
-        train_feat(m,4) = null_feat;
-        train_feat(m,3) = null_feat;
-        train_feat(m,2) = null_feat;
-        train_feat(m,1) = null_feat;
-        continue
-    end
-    %% 读取Tx包（非反射）
-    pkt_trace = loctag_read_log_file(strcat(file_path_prefix,'a'));
-    rate_vector = cellfun(@(x) x.rate,pkt_trace);
-    pkt_count_total(m, 1) = sum(rate_vector==0x1b);
-    pkt_count_total(m, 2) = sum(rate_vector==0x80);
-    % 读取11b包
+%% 训练集
+train_file_no = fullfile(path, 'trainset', file_no_str);
+train_pkt_count = zeros(length(train_file_no), 4);  % (tag1, tag2, tag3, tx)
+train_feat = zeros(length(train_file_no), 4); % (tag1, tag2, tag3, tx)
+for m=1:length(train_file_no)
+    %% 读取AP包（AP直接信号RSS）
+    pkt_trace = loctag_read_log_file(strcat(train_file_no{m},'a'));
+    rate_vector = cellfun(@(x) x.rate, pkt_trace);
     pkt_trace_b = pkt_trace(rate_vector==0x1b);
-    pkt_count_valid(m, 4) = length(pkt_trace_b);
-    pkt_record_b = pkt_trace_b{1};
-
-    % fea(m,4).timestamp = pkt_record_b.timestamp;
-    train_feat(m,4).txMac = pkt_record_b.txMac;
-    train_feat(m,4).id = pkt_record_b.id;
-    train_feat(m,4).rss = pkt_record_b.rss;
-    train_feat(m,4).ant_rss = pkt_record_b.ant_rss;
-    train_feat(m,4).tag_rss = pkt_record_b.tag_rss;
-    train_feat(m,4).csi = pkt_record_b.csi;
-
-    % 读取11b包
-    % pkt_trace_n = pkt_trace(rate_vector==0x80);
+    % 计数
+    train_pkt_count(m,4) = sum(rate_vector==0x1b);
+    % 读取RSSI作为特征
+    train_feat(m,4) = mean(cellfun(@(x) double(x.rss), pkt_trace_b));
     %% 读取Tag包（反射）
-    pkt_trace = loctag_read_log_file(strcat(file_path_prefix,'z'));
+    pkt_trace = loctag_read_log_file(strcat(train_file_no{m},'z'));
     rate_vector = cellfun(@(x) x.rate,pkt_trace);
-    pkt_count_total(m, 3) = sum(rate_vector==0x1b);
-    pkt_count_total(m, 4) = sum(rate_vector==0x80);
-    % 读取11b包
     pkt_trace_b = pkt_trace(rate_vector==0x1b);
-    id_vector = cellfun(@(x) x.id,pkt_trace);
-
+    % 读取每个Tag的RSS
+    id_vector = cellfun(@(x) x.id, pkt_trace_b);
     for n=1:3
-        pkt_trace_b = pkt_trace(id_vector==n);
-        pkt_count_valid(m, n) = length(pkt_trace_b);
-        if length(pkt_trace_b)>=1
-            pkt_record_b = pkt_trace_b{1}; %%
-    %       fea(m,n).timestamp = pkt_record_b.timestamp;
-            train_feat(m,n).txMac = pkt_record_b.txMac;
-            train_feat(m,n).id = pkt_record_b.id;
-            train_feat(m,n).rss = pkt_record_b.rss;
-            train_feat(m,n).ant_rss = pkt_record_b.ant_rss;
-            train_feat(m,n).tag_rss = pkt_record_b.tag_rss;
-            train_feat(m,n).csi = pkt_record_b.csi;
+        train_pkt_count(m, n) = sum(id_vector==n);
+        if train_pkt_count(m, n)>=1
+            pkt_trace_b_tmp = pkt_trace_b(id_vector==n);
+            train_feat(m,n) = mean(cellfun(@(x) double(x.rss), pkt_trace_b_tmp));
         else
-    %       fea(m,n).timestamp = pkt_record_b.timestamp;
-            train_feat(m,n) = null_feat;
-            train_feat(m,n).txMac = pkt_record_b.txMac;
-            train_feat(m,n).id = n;
+            train_feat(m,n) = -100;
         end
     end
 end
 
-%% 测试点
-for m=1:max(file_no_list)
-    file_path_prefix = sprintf('%s%03d', dataset_path, m);
-    if ~isfile(strcat(file_path_prefix,'a'))
-        test_feat(m,4) = null_feat;
-        test_feat(m,3) = null_feat;
-        test_feat(m,2) = null_feat;
-        test_feat(m,1) = null_feat;
-        continue
-    end
-    %% 读取Tx包（非反射）
-    pkt_trace = loctag_read_log_file(strcat(file_path_prefix,'a'));
-    rate_vector = cellfun(@(x) x.rate,pkt_trace);
-    pkt_count_total(m, 1) = sum(rate_vector==0x1b);
-    pkt_count_total(m, 2) = sum(rate_vector==0x80);
-    % 读取11b包
+%% 测试集
+test_file_no = fullfile(path, 'testset', file_no_str);
+test_pkt_count = zeros(length(test_file_no), 4);
+test_feat = zeros(length(test_file_no), 4);
+prop = 0.12;
+for m=1:length(test_file_no)
+    %% 读取AP包（AP直接信号RSS）
+    pkt_trace = loctag_read_log_file(strcat(test_file_no{m},'a'));
+    rate_vector = cellfun(@(x) x.rate, pkt_trace);
     pkt_trace_b = pkt_trace(rate_vector==0x1b);
-    pkt_count_valid(m, 4) = length(pkt_trace_b);
-    pkt_record_b = pkt_trace_b{end}; %%
+    % 计数
+    test_pkt_count(m,4) = sum(rate_vector==0x1b);
+    % 读取RSSI作为特征
+    sample_index = gen_sample_index(test_pkt_count(m,4), prop);
+    test_feat(m,4) = mean(cellfun(@(x) double(x.rss), pkt_trace_b(sample_index)));
 
-    % fea(m,4).timestamp = pkt_record_b.timestamp;
-    test_feat(m,4).txMac = pkt_record_b.txMac;
-    test_feat(m,4).id = pkt_record_b.id;
-    test_feat(m,4).rss = pkt_record_b.rss;
-    test_feat(m,4).ant_rss = pkt_record_b.ant_rss;
-    test_feat(m,4).tag_rss = pkt_record_b.tag_rss;
-    test_feat(m,4).csi = pkt_record_b.csi;
-
-    % 读取11b包
-    % pkt_trace_n = pkt_trace(rate_vector==0x80);
-   %% 读取Tag包（反射）
-    pkt_trace = loctag_read_log_file(strcat(file_path_prefix,'z'));
+    %% 读取Tag包（反射）
+    pkt_trace = loctag_read_log_file(strcat(test_file_no{m},'z'));
     rate_vector = cellfun(@(x) x.rate,pkt_trace);
-    pkt_count_total(m, 3) = sum(rate_vector==0x1b);
-    pkt_count_total(m, 4) = sum(rate_vector==0x80);
-    % 读取11b包
     pkt_trace_b = pkt_trace(rate_vector==0x1b);
-    id_vector = cellfun(@(x) x.id,pkt_trace);
-
+    % 读取每个Tag的RSS
+    id_vector = cellfun(@(x) x.id, pkt_trace_b);
     for n=1:3
-        pkt_trace_b = pkt_trace(id_vector==n);
-        pkt_count_valid(m, n) = length(pkt_trace_b);
-        if length(pkt_trace_b)>=1
-            pkt_record_b = pkt_trace_b{end};
-    %       fea(m,n).timestamp = pkt_record_b.timestamp;
-            test_feat(m,n).txMac = pkt_record_b.txMac;
-            test_feat(m,n).id = pkt_record_b.id;
-            test_feat(m,n).rss = pkt_record_b.rss;
-            test_feat(m,n).ant_rss = pkt_record_b.ant_rss;
-            test_feat(m,n).tag_rss = pkt_record_b.tag_rss;
-            test_feat(m,n).csi = pkt_record_b.csi;
+        test_pkt_count(m, n) = sum(id_vector==n);
+        if test_pkt_count(m, n)>=1
+            pkt_trace_b_tmp = pkt_trace_b(id_vector==n);
+            sample_index = gen_sample_index(test_pkt_count(m,n), prop);
+            test_feat(m,n) = mean(cellfun(@(x) double(x.rss), pkt_trace_b_tmp(sample_index)));
         else
-    %       fea(m,n).timestamp = pkt_record_b.timestamp;
-            test_feat(m,n).txMac = pkt_record_b.txMac;
-            test_feat(m,n).id = n;
-            test_feat(m,n).rss = -100;
-            test_feat(m,n).ant_rss = [-100 -100 -100];
-            test_feat(m,n).tag_rss = double(-100);
-            test_feat(m,n).csi = [];
+            test_feat(m,n) = -100;
         end
     end
 end
+mkdir('results');
+save('results/loctag_rss_loc_dataset.mat', 'file_no', 'coord', 'train_pkt_count', 'test_pkt_count', 'train_feat', 'test_feat');
+end
 
-save('loctag_rss_loc_dataset.mat', 'coordinates', 'file_no_list', 'pkt_count_total', 'pkt_count_valid', 'train_feat', 'test_feat');
-
-% rss_vector = cellfun(@(x) x.rss,pkt_trace);
-% tag_rss_vector = cellfun(@(x) x.tag_rss,pkt_trace);
-% id_count = histogram(id_vector, unique(id_vector)); %
-% figure
-% rss_count = histogram(rss_vector, unique(rss_vector)); %
-% tag_rss_vector = histogram(tag_rss_vector, unique(tag_rss_vector)); %
-
-% id_vector = cellfun(@(x) x.id,pkt_trace);
-% sample_idx = 16;
-% csi_entity = pkt_trace{sample_idx};
-% csi = squeeze(csi_entity.csi(:,1,:));
-% sc_idx = [-28:-1, 1:28];
-% csi_abs = db(abs(csi));
-% csi_phase = unwrap(angle(csi));
-% plot(sc_idx, csi_abs);
-% ylim([0 60])
-% figure
-% plot(sc_idx, csi_phase);
-% ylim([-2*pi, 2*pi]);
+function index = gen_sample_index(n, prop)
+    x = ceil(n*prop);
+    if x==0
+        index = 1;
+    else
+        index = 1:x;
+    end
+end

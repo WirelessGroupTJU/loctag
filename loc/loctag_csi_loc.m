@@ -7,7 +7,9 @@ if ~exist('results/loctag_rss_loc_dataset-0.12.mat', 'file')
     loctag_rss_loc_dataset_gen(dataset_path);
 end
 load('results/loctag_rss_loc_dataset-0.12.mat');
-
+load('results/loctag_csi_loc_dataset.mat');
+train_feat = [train_feat mean(train_feat_csi(:,1:2),2) mean(train_feat_csi(:,3:4),2)];
+test_feat = [test_feat mean(test_feat_csi(:,1:2),2) mean(test_feat_csi(:,3:4),2)];
 descFile = fullfile(dataset_path, 'settings.json');
 desc = jsondecode(fileread(descFile));
 tag_coord = [0.4,0.4; 0.4,-0.4; -0.4,-0.4]; % 标签1/2/3，对应文件名前缀：53/45/44
@@ -27,7 +29,7 @@ test_feat_mat = test_feat;%arrayfun(@(x) double(x.rss),test_feat, 'UniformOutput
 diff_feat_mat = test_feat_mat - train_feat_mat;
 
 %% 不使用标签时的定位精度
-ap_mask = [4];
+ap_mask = [4 6];
 
 mdl0 = fitcknn(train_feat_mat(trainset_label, ap_mask), trainset_label, 'NumNeighbors',1, 'Distance','euclidean');
 [label0,score0,cost0] = predict(mdl0, test_feat_mat(testset_label, ap_mask));
@@ -35,9 +37,9 @@ error_vec0 = vecnorm(coord(label0,:)-coord(testset_label,:),2,2);
 
 %% 使用标签时的定位精度
 % tag_mask = [1 2 3 4];
-tag_masks =  {{ [1 4], [2 4], [3 4]}, ...
-                {[1 2 4], [1 3 4] [2 3 4]}, ...
-                {[1 2 3 4]}};
+tag_masks =  {{ [1 4 6], [2 4 6], [3 4 6]}, ...
+                {[1 2 4 6], [1 3 4 6] [2 3 4 6]}, ...
+                {[1 2 3 4 6]}};
 lenged_texts = {{'AP', 'AP+LocTag\{1\}', 'AP+LocTag\{2\}', 'AP+LocTag\{3\}'},...
                 {'AP', 'AP+LocTag\{1,2\}', 'AP+LocTag\{1,3\}', 'AP+LocTag\{2,3\}'},...
                 {'AP', 'AP+LocTag\{1,2,3\}'}};
@@ -76,7 +78,14 @@ for tag_num=1:3
         );
     box on
     legend(lenged_texts{tag_num}, 'Location', 'southeast');
-%     print('-dpng','-r150', sprintf('results/ch5ErrCdf-%d',tag_num));
+    print('-dpng','-r150', sprintf('results/ch5CsiErrCdf-%d',tag_num));
 
 end
-
+function D2 = distfun(zi, zj)
+    
+    D2 = zeros(size(zj,1),1);
+    for m=1:size(zj,1)
+        nonzero_mask = ((zi~=-100)&(zj(m,:)~=-100));
+        D2(m) = vecnorm(zi(nonzero_mask)-zj(m,nonzero_mask), 2);
+    end
+end
