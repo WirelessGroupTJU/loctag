@@ -150,7 +150,7 @@ end
 function figureSetDefault(varargin)
 rows=1;
 cols=1;
-linewidth = 1;
+linewidth = 2;
 if numel(varargin{1})>=2
 rows=varargin{1}(1);
 cols=varargin{1}(2);

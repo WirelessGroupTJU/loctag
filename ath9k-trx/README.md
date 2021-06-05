@@ -19,8 +19,10 @@ sudo loctag_inject 1200 6 500  # 发送1200个"11b数据帧+11n数据帧"帧对�
 ```bash
 sudo python driverUtil.py  # 为csi驱动设置过滤选项，仅处理发送端为指定mac地址的包
 # 方式1：手动收数
-start_monitor.sh 11  # 打开monitor模式，并设置信道为11
-sudo loctag_csi xxxx.csi  # 记录csi数据到文件xxxx.csi
+start_monitor.sh 11  # 打开monitor模式，并设置信道为11，记录直接来自发送端的包的CSI
+sudo loctag_csi xxxxa.csi  # 记录csi数据到文件xxxxa.csi
+start_monitor.sh 1  # 打开monitor模式，并设置信道为1，记录来自标签反射的包的CSI
+sudo loctag_csi xxxxz.csi  # 记录csi数据到文件xxxx.csi
 # 方式2：双信道简化操作
 ./loctag_csi_x.sh xxx a # 在11信道记录csi数据，并保存到文件xxxxa
 ./loctag_csi_x.sh xxx z # 在1信道记录csi数据，并保存到文件xxxxz

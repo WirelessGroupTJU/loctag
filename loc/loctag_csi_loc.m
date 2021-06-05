@@ -50,8 +50,9 @@ mean_error_down_percent = zeros(3,1);
 for tag_num=1:3
     figure; hold on;
     hh = cdfplot(error_vec0); % 不使用标签时的CDF
-    set(hh, 'LineStyle', '--', 'Color', 'k');
+    set(hh, 'LineStyle', '-', 'Color', 'k', 'LineWidth', 1);
 
+    linestylelist = {'--', ':', '-.'};
     colorlist = 'rmb';
     error_vec = cell(length(tag_masks{tag_num}),1);
     for mm=1:length(tag_masks{tag_num})
@@ -66,7 +67,7 @@ for tag_num=1:3
         fprintf(']\n');
 
         hh = cdfplot(error_vec{mm}); 
-        set(hh, 'LineStyle', '-', 'Color', colorlist(mm));
+        set(hh, 'LineStyle', linestylelist{mm}, 'Color', colorlist(mm));
     end
     mean_error0 = mean(error_vec0);
     mean_error(tag_num) = mean(cellfun(@mean, error_vec));
@@ -78,7 +79,7 @@ for tag_num=1:3
         );
     box on
     legend(lenged_texts{tag_num}, 'Location', 'southeast');
-    print('-dpng','-r150', sprintf('results/ch5CsiErrCdf-%d',tag_num));
+%     print('-dpng','-r150', sprintf('results/ch5CsiErrCdf-%d',tag_num));
 
 end
 function D2 = distfun(zi, zj)
